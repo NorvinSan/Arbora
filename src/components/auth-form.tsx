@@ -15,16 +15,17 @@ import { Label } from "@/components/ui/label";
 
 function FormShell({ registering, children }: { registering: boolean; children: ReactNode }) {
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle className="text-2xl">{registering ? "Crea tu cuenta" : "Inicia sesión"}</CardTitle>
-        <CardDescription>{registering ? "Guarda y explora tu historia familiar en un espacio privado." : "Vuelve a tus árboles familiares."}</CardDescription>
+    <Card className="w-full max-w-md border-[#dce7d9] shadow-[0_18px_50px_rgba(30,68,43,0.07)] sm:gap-7 sm:p-2">
+      <CardHeader className="space-y-2">
+        <p className="eyebrow">{registering ? "Comienza tu historia" : "Bienvenido de nuevo"}</p>
+        <CardTitle className="font-heading text-3xl sm:text-4xl">{registering ? "Crea tu cuenta" : "Inicia sesión"}</CardTitle>
+        <CardDescription className="leading-6">{registering ? "Guarda y explora tu historia familiar en un espacio privado." : "Retoma la historia donde la dejaste."}</CardDescription>
       </CardHeader>
       <CardContent>
         {children}
-        <p className="mt-6 text-center text-sm text-slate-600">
+        <p className="mt-7 border-t border-[#e6ece2] pt-6 text-center text-sm text-[#607266]">
           {registering ? "¿Ya tienes cuenta? " : "¿Aún no tienes cuenta? "}
-          <Link className="font-medium text-emerald-800 underline" href={registering ? "/login" : "/register"}>
+          <Link className="text-link" href={registering ? "/login" : "/register"}>
             {registering ? "Inicia sesión" : "Regístrate"}
           </Link>
         </p>
@@ -34,7 +35,7 @@ function FormShell({ registering, children }: { registering: boolean; children: 
 }
 
 function FieldError({ message }: { message?: string }) {
-  return message ? <p role="alert" className="text-sm text-red-700">{message}</p> : null;
+  return message ? <p role="alert" className="form-error">{message}</p> : null;
 }
 
 function RegisterForm() {

@@ -26,7 +26,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#faf9f6] text-[#22392d]">
       <header className="border-b border-[#dfe6dc] bg-[#faf9f6]">
         <nav aria-label="Navegación pública" className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-5 sm:px-8 lg:px-12">
-          <Link href="/" aria-label="Arbora, inicio" className="flex items-center gap-2.5 text-xl font-semibold tracking-tight">
+          <Link href="/" aria-label="Arbora, inicio" className="flex items-center gap-2.5 font-heading text-2xl font-semibold tracking-tight">
             <span className="flex size-9 items-center justify-center rounded-xl bg-[#28543d] text-white"><Sprout className="size-5" strokeWidth={1.8} /></span>
             Arbora
           </Link>
@@ -59,7 +59,7 @@ export default function Home() {
                   <Link href="#explora">Ver una vista previa</Link>
                 </Button>
               </div>
-              <p className="mt-6 text-xs text-[#758879]">Un proyecto de código abierto · Espacio privado por defecto</p>
+              <p className="mt-6 text-xs text-[#758879]">Un proyecto de código abierto · Tu espacio familiar privado</p>
             </div>
             <div id="explora" className="min-w-0 scroll-mt-8">
               <FlowCanvas />

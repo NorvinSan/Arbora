@@ -15,7 +15,8 @@ import { user } from "../src/db/schema";
 
 config({ path: ".env.local", quiet: true });
 
-const usage = "Uso: pnpm db:seed --owner-email correo-de-tu-cuenta";
+const demo = { name: "Cuenta de demostración", email: "demo@arbora.local", password: "ArboraDemo2026!" };
+const usage = "Uso: pnpm db:seed [--owner-email correo-de-tu-cuenta]";
 
 function seedId(ownerId: string, key: string): string {
   const bytes = createHash("sha256").update(`arbora:demo:v1:${ownerId}:${key}`).digest();
@@ -36,7 +37,8 @@ async function main() {
     throw new Error("El seed de demostración no se ejecuta con NODE_ENV=production.");
   }
 
-  if (args.length !== 2 || args[0] !== "--owner-email" || !args[1]?.includes("@")) {
+  const useDemoAccount = args.length === 0;
+  if (!useDemoAccount && (args.length !== 2 || args[0] !== "--owner-email" || !args[1]?.includes("@"))) {
     throw new Error(usage);
   }
 
@@ -44,12 +46,39 @@ async function main() {
   if (!databaseUrl) {
     throw new Error("Falta DATABASE_URL. Configúrala fuera del repositorio y ejecuta las migraciones primero.");
   }
+  if (useDemoAccount) {
+    const authUrl = process.env.BETTER_AUTH_URL;
+    if (!process.env.BETTER_AUTH_SECRET || !authUrl ||
+      !["localhost", "127.0.0.1"].includes(new URL(databaseUrl).hostname) ||
+      !["localhost", "127.0.0.1"].includes(new URL(authUrl).hostname)) {
+      throw new Error("La cuenta demo solo se crea con la base de datos y la app configuradas en localhost.");
+    }
+  }
 
   const pool = new Pool({ connectionString: databaseUrl });
   const db = drizzle(pool);
 
   try {
-    const [owner] = await db.select({ id: user.id }).from(user).where(eq(user.email, args[1])).limit(1);
+    const email = useDemoAccount ? demo.email : args[1].trim().toLowerCase();
+    let [owner] = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).limit(1);
+    let demoPasswordWorks = false;
+    if (useDemoAccount) {
+      // Use the same Better Auth configuration as the app so the demo password
+      // is hashed and its account can sign in through the normal login form.
+      const { auth } = await import("../src/lib/auth");
+      if (!owner) {
+        await auth.api.signUpEmail({ body: demo });
+        [owner] = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).limit(1);
+        demoPasswordWorks = true;
+      } else {
+        try {
+          await auth.api.signInEmail({ body: { email, password: demo.password } });
+          demoPasswordWorks = true;
+        } catch {
+          // An existing demo account may have a user-changed password.
+        }
+      }
+    }
     if (!owner) {
       throw new Error("No existe esa cuenta. Regístrala primero con Better Auth y repite el comando.");
     }
@@ -132,6 +161,10 @@ async function main() {
     });
 
     console.log("Seed listo: 1 árbol ficticio, 7 personas, 8 vínculos padre-hijo, 2 parejas, 11 eventos y 2 historias.");
+    if (useDemoAccount) {
+      console.log(`Cuenta demo: ${demo.email}`);
+      console.log(demoPasswordWorks ? `Contraseña demo: ${demo.password}` : "La contraseña demo se cambió; inicia sesión con la contraseña actual.");
+    }
     console.log("Puedes repetir el comando: no duplica registros ni sobrescribe cambios existentes.");
   } finally {
     await pool.end();

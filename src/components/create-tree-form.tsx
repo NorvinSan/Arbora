@@ -33,10 +33,10 @@ export function CreateTreeForm() {
   });
 
   return (
-    <Card className="max-w-xl">
+    <Card>
       <CardHeader>
         <CardTitle>Crear un árbol familiar</CardTitle>
-        <CardDescription>Empieza con un nombre. Podrás agregar integrantes desde el árbol.</CardDescription>
+        <CardDescription className="leading-6">Dale un nombre a tu historia. Después podrás añadir personas y sus vínculos.</CardDescription>
       </CardHeader>
       <CardContent>
         <form noValidate onSubmit={submit} className="space-y-4">
@@ -47,11 +47,11 @@ export function CreateTreeForm() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="tree-description">Descripción (opcional)</Label>
-            <textarea id="tree-description" rows={3} aria-invalid={!!errors.description} disabled={isSubmitting} className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50" {...register("description")} />
+          <textarea id="tree-description" rows={3} placeholder="Una breve nota sobre este árbol…" aria-invalid={!!errors.description} disabled={isSubmitting} className="field-textarea" {...register("description")} />
             {errors.description && <p role="alert" className="text-sm text-red-700">{errors.description.message}</p>}
           </div>
-          {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Creando…" : "Crear árbol"}</Button>
+          {error && <p role="alert" className="form-error">{error}</p>}
+          <Button type="submit" className="w-full" disabled={isSubmitting}>{isSubmitting ? "Creando…" : "Crear árbol"}</Button>
         </form>
       </CardContent>
     </Card>

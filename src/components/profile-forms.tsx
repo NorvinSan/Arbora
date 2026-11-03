@@ -54,18 +54,18 @@ export function ProfileForms({ name, email, createdAt }: { name: string; email: 
   });
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="grid items-start gap-6 lg:grid-cols-2">
       <Card>
         <CardHeader><CardTitle>Datos de la cuenta</CardTitle><CardDescription>Tu correo no se puede cambiar desde este perfil.</CardDescription></CardHeader>
         <CardContent className="space-y-5">
-          <div className="space-y-1"><p className="text-sm font-medium">Correo electrónico</p><p className="break-all text-sm text-slate-600">{email}</p></div>
-          <div className="space-y-1"><p className="text-sm font-medium">Cuenta creada</p><p className="text-sm text-slate-600">{createdAt}</p></div>
-          <form noValidate onSubmit={updateName} className="space-y-3">
+          <div className="grid gap-4 rounded-xl bg-[#f3f7f1] p-4 sm:grid-cols-2"><div className="space-y-1"><p className="text-xs font-semibold uppercase tracking-wide text-[#6d846f]">Correo electrónico</p><p className="break-all text-sm font-medium text-[#294b35]">{email}</p></div>
+          <div className="space-y-1"><p className="text-xs font-semibold uppercase tracking-wide text-[#6d846f]">Cuenta creada</p><p className="text-sm font-medium text-[#294b35]">{createdAt}</p></div></div>
+          <form noValidate onSubmit={updateName} className="space-y-4">
             <Label htmlFor="profile-name">Nombre</Label>
             <Input id="profile-name" autoComplete="name" aria-invalid={!!profile.formState.errors.name} disabled={profile.formState.isSubmitting} {...profile.register("name")} />
             {profile.formState.errors.name && <p role="alert" className="text-sm text-red-700">{profile.formState.errors.name.message}</p>}
-            {profileError && <p role="alert" className="text-sm text-red-700">{profileError}</p>}
-            {profileSuccess && <p role="status" className="text-sm text-emerald-800">{profileSuccess}</p>}
+            {profileError && <p role="alert" className="form-error">{profileError}</p>}
+            {profileSuccess && <p role="status" className="form-success">{profileSuccess}</p>}
             <Button type="submit" disabled={profile.formState.isSubmitting}>{profile.formState.isSubmitting ? "Guardando…" : "Guardar nombre"}</Button>
           </form>
         </CardContent>
@@ -77,8 +77,8 @@ export function ProfileForms({ name, email, createdAt }: { name: string; email: 
             <div className="space-y-2"><Label htmlFor="current-password">Contraseña actual</Label><Input id="current-password" type="password" autoComplete="current-password" aria-invalid={!!password.formState.errors.currentPassword} disabled={password.formState.isSubmitting} {...password.register("currentPassword")} />{password.formState.errors.currentPassword && <p role="alert" className="text-sm text-red-700">{password.formState.errors.currentPassword.message}</p>}</div>
             <div className="space-y-2"><Label htmlFor="new-password">Contraseña nueva</Label><Input id="new-password" type="password" autoComplete="new-password" aria-invalid={!!password.formState.errors.newPassword} disabled={password.formState.isSubmitting} {...password.register("newPassword")} />{password.formState.errors.newPassword && <p role="alert" className="text-sm text-red-700">{password.formState.errors.newPassword.message}</p>}</div>
             <div className="space-y-2"><Label htmlFor="confirm-password">Confirmar contraseña nueva</Label><Input id="confirm-password" type="password" autoComplete="new-password" aria-invalid={!!password.formState.errors.confirmation} disabled={password.formState.isSubmitting} {...password.register("confirmation")} />{password.formState.errors.confirmation && <p role="alert" className="text-sm text-red-700">{password.formState.errors.confirmation.message}</p>}</div>
-            {passwordError && <p role="alert" className="text-sm text-red-700">{passwordError}</p>}
-            {passwordSuccess && <p role="status" className="text-sm text-emerald-800">{passwordSuccess}</p>}
+            {passwordError && <p role="alert" className="form-error">{passwordError}</p>}
+            {passwordSuccess && <p role="status" className="form-success">{passwordSuccess}</p>}
             <Button type="submit" disabled={password.formState.isSubmitting}>{password.formState.isSubmitting ? "Actualizando…" : "Cambiar contraseña"}</Button>
           </form>
         </CardContent>

@@ -36,13 +36,13 @@ export function AddPersonForm({ treeId }: { treeId: string }) {
   });
 
   return (
-    <Card className="max-w-2xl">
+    <Card>
       <CardHeader>
         <CardTitle>Agregar un familiar</CardTitle>
-        <CardDescription>Registra primero a la persona; los vínculos familiares se añadirán después.</CardDescription>
+        <CardDescription className="leading-6">Registra a la persona y después podrás establecer sus vínculos familiares.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form noValidate onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+          <form noValidate onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
           <input type="hidden" {...register("treeId")} />
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="person-display-name">Nombre para mostrar</Label>
@@ -61,20 +61,20 @@ export function AddPersonForm({ treeId }: { treeId: string }) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="person-life-status">Estado vital</Label>
-            <select id="person-life-status" disabled={isSubmitting} className="h-9 w-full rounded-lg border border-input bg-white px-3 text-sm" {...register("lifeStatus")}>
+            <select id="person-life-status" disabled={isSubmitting} className="field-select" {...register("lifeStatus")}>
               <option value="unknown">Desconocido</option><option value="living">Vive</option><option value="deceased">Falleció</option>
             </select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="person-whereabouts">Paradero</Label>
-            <select id="person-whereabouts" disabled={isSubmitting} className="h-9 w-full rounded-lg border border-input bg-white px-3 text-sm" {...register("whereaboutsStatus")}>
+            <select id="person-whereabouts" disabled={isSubmitting} className="field-select" {...register("whereaboutsStatus")}>
               <option value="unknown">Desconocido</option><option value="known">Conocido</option><option value="missing">Desaparecido/a</option>
             </select>
           </div>
           <div className="space-y-3 sm:col-span-2">
-            {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-            {success && <p role="status" className="text-sm text-emerald-800">{success}</p>}
-            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Guardando…" : "Agregar persona"}</Button>
+            {error && <p role="alert" className="form-error">{error}</p>}
+            {success && <p role="status" className="form-success">{success}</p>}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>{isSubmitting ? "Guardando…" : "Agregar persona"}</Button>
           </div>
         </form>
       </CardContent>

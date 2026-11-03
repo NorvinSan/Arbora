@@ -11,7 +11,7 @@ test("cuentas, sesiones y aislamiento de árboles con PostgreSQL real", { timeou
   const baseURL = process.env.BETTER_AUTH_URL;
   assert.ok(databaseUrl && baseURL, "Configura .env.local y arranca la app antes de esta prueba.");
   assert.ok(["127.0.0.1", "localhost"].includes(new URL(databaseUrl).hostname), "La prueba solo se ejecuta contra PostgreSQL local.");
-  assert.equal(new URL(baseURL).hostname, "localhost", "La prueba solo se ejecuta contra la app local.");
+  assert.ok(["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname), "La prueba solo se ejecuta contra la app local.");
   const origin = new URL(baseURL).origin;
 
   const suffix = randomUUID();

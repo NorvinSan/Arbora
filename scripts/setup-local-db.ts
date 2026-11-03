@@ -6,6 +6,8 @@ import { Pool } from "pg";
 
 const container = "arbora-postgres";
 const volume = "arbora-postgres-data";
+const databasePort = 55432;
+const appPort = 4327;
 const appEnv = resolve(".env.local");
 const podmanEnv = resolve(".env.podman.local");
 
@@ -34,16 +36,16 @@ async function main() {
 
   const password = randomBytes(32).toString("base64url");
   const authSecret = randomBytes(48).toString("base64url");
-  const databaseUrl = `postgresql://arbora:${password}@127.0.0.1:5432/arbora`;
+  const databaseUrl = `postgresql://arbora:${password}@127.0.0.1:${databasePort}/arbora`;
 
-  writeFileSync(appEnv, `DATABASE_URL=${databaseUrl}\nBETTER_AUTH_SECRET=${authSecret}\nBETTER_AUTH_URL=http://localhost:3000\n`, { flag: "wx", mode: 0o600 });
+  writeFileSync(appEnv, `DATABASE_URL=${databaseUrl}\nBETTER_AUTH_SECRET=${authSecret}\nBETTER_AUTH_URL=http://127.0.0.1:${appPort}\n`, { flag: "wx", mode: 0o600 });
   writeFileSync(podmanEnv, `POSTGRES_USER=arbora\nPOSTGRES_PASSWORD=${password}\nPOSTGRES_DB=arbora\n`, { flag: "wx", mode: 0o600 });
 
   podman(["volume", "create", volume]);
   podman([
     "run", "-d", "--name", container,
     "--env-file", podmanEnv,
-    "-p", "127.0.0.1:5432:5432",
+    "-p", `127.0.0.1:${databasePort}:5432`,
     "-v", `${volume}:/var/lib/postgresql/data`,
     "docker.io/library/postgres:17-alpine",
   ]);
@@ -53,7 +55,7 @@ async function main() {
     for (let attempt = 0; attempt < 60; attempt++) {
       try {
         await pool.query("select 1");
-        console.log("PostgreSQL de Arbora está listo en 127.0.0.1:5432.");
+        console.log(`PostgreSQL de Arbora está listo en 127.0.0.1:${databasePort}.`);
         console.log("Configuración local creada e ignorada por Git. Ejecuta pnpm db:migrate.");
         return;
       } catch {

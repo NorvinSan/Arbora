@@ -13,3 +13,18 @@ export const addPersonSchema = z.object({
   lifeStatus: z.enum(["living", "deceased", "unknown"]),
   whereaboutsStatus: z.enum(["known", "missing", "unknown"]),
 });
+
+const relationIdsSchema = z.object({
+  treeId: z.string().uuid("El árbol no es válido."),
+  parentId: z.string().uuid("Selecciona un progenitor válido."),
+  childId: z.string().uuid("Selecciona un hijo o hija válido."),
+}).refine((value) => value.parentId !== value.childId, {
+  path: ["childId"],
+  message: "Una persona no puede ser su propio progenitor.",
+});
+
+export const createParentChildSchema = relationIdsSchema.safeExtend({
+  relationType: z.enum(["biological", "adoptive", "other"], { error: "Selecciona un tipo de parentesco." }),
+});
+
+export const deleteParentChildSchema = relationIdsSchema;

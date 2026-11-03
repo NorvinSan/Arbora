@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { addPersonSchema, createTreeSchema } from "../src/lib/tree-form-schemas";
+import { addPersonSchema, createParentChildSchema, createTreeSchema, deleteParentChildSchema } from "../src/lib/tree-form-schemas";
 
 describe("árboles familiares", () => {
   it("exige un nombre y normaliza los espacios", () => {
@@ -11,6 +11,28 @@ describe("árboles familiares", () => {
 
   it("limita la descripción para evitar entradas excesivas", () => {
     assert.equal(createTreeSchema.safeParse({ name: "Familia", description: "x".repeat(1001) }).success, false);
+  });
+});
+
+describe("parentescos", () => {
+  const valid = {
+    treeId: "0194c35a-f60a-7c5a-9748-ec474469deba",
+    parentId: "0194c35a-f60a-7c5a-9748-ec474469debb",
+    childId: "0194c35a-f60a-7c5a-9748-ec474469debc",
+    relationType: "adoptive",
+  };
+
+  it("acepta los tres tipos de parentesco y rechaza identificadores inválidos", () => {
+    for (const relationType of ["biological", "adoptive", "other"]) {
+      assert.equal(createParentChildSchema.safeParse({ ...valid, relationType }).success, true);
+    }
+    assert.equal(createParentChildSchema.safeParse({ ...valid, relationType: "unknown" }).success, false);
+    assert.equal(createParentChildSchema.safeParse({ ...valid, childId: "invalid" }).success, false);
+  });
+
+  it("no permite que alguien sea su propio progenitor, ni al crear ni al eliminar", () => {
+    assert.equal(createParentChildSchema.safeParse({ ...valid, childId: valid.parentId }).success, false);
+    assert.equal(deleteParentChildSchema.safeParse({ ...valid, childId: valid.parentId }).success, false);
   });
 });
 

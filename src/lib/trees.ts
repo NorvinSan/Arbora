@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, desc, eq, or } from "drizzle-orm";
 import { db } from "@/db";
-import { familyTree, person, treeCollaborator } from "@/db/app-schema";
+import { familyTree, parentChild, person, treeCollaborator } from "@/db/app-schema";
 
 // Authorization is part of the database query, not just the navigation UI.
 export async function getAccessibleTrees(userId: string) {
@@ -51,4 +51,41 @@ export async function getAccessiblePeople(userId: string, treeId: string) {
       or(eq(familyTree.ownerId, userId), eq(treeCollaborator.userId, userId)),
     ))
     .orderBy(person.displayName);
+}
+
+export async function getAccessiblePerson(userId: string, treeId: string, personId: string) {
+  const [member] = await db.select({
+    id: person.id,
+    displayName: person.displayName,
+    givenName: person.givenName,
+    familyName: person.familyName,
+    biography: person.biography,
+    lifeStatus: person.lifeStatus,
+    whereaboutsStatus: person.whereaboutsStatus,
+  }).from(person)
+    .innerJoin(familyTree, eq(person.treeId, familyTree.id))
+    .leftJoin(treeCollaborator, and(eq(treeCollaborator.treeId, familyTree.id), eq(treeCollaborator.userId, userId)))
+    .where(and(
+      eq(person.treeId, treeId),
+      eq(person.id, personId),
+      or(eq(familyTree.ownerId, userId), eq(treeCollaborator.userId, userId)),
+    )).limit(1);
+  return member ?? null;
+}
+
+// Call after checking access to the tree and the profile person.
+export async function getFamilyRelations(treeId: string, personId: string) {
+  const [parents, children] = await Promise.all([
+    db.select({ id: person.id, displayName: person.displayName, relationType: parentChild.relationType })
+      .from(parentChild)
+      .innerJoin(person, and(eq(person.treeId, parentChild.treeId), eq(person.id, parentChild.parentId)))
+      .where(and(eq(parentChild.treeId, treeId), eq(parentChild.childId, personId)))
+      .orderBy(person.displayName),
+    db.select({ id: person.id, displayName: person.displayName, relationType: parentChild.relationType })
+      .from(parentChild)
+      .innerJoin(person, and(eq(person.treeId, parentChild.treeId), eq(person.id, parentChild.childId)))
+      .where(and(eq(parentChild.treeId, treeId), eq(parentChild.parentId, personId)))
+      .orderBy(person.displayName),
+  ]);
+  return { parents, children };
 }
