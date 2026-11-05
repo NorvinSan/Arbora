@@ -1,0 +1,1467 @@
+{
+  "id": "f124c05d-575a-4172-be32-bdfdff77dc09",
+  "prevId": "bc545378-f9b5-4f12-adf4-0cea9e1239c9",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.account": {
+      "name": "account",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "access_token_expires_at": {
+          "name": "access_token_expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token_expires_at": {
+          "name": "refresh_token_expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "account_userId_idx": {
+          "name": "account_userId_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "account_user_id_user_id_fk": {
+          "name": "account_user_id_user_id_fk",
+          "tableFrom": "account",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.session": {
+      "name": "session",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "session_userId_idx": {
+          "name": "session_userId_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "session_user_id_user_id_fk": {
+          "name": "session_user_id_user_id_fk",
+          "tableFrom": "session",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "session_token_unique": {
+          "name": "session_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user": {
+      "name": "user",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email_verified": {
+          "name": "email_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "user_email_unique": {
+          "name": "user_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.verification": {
+      "name": "verification",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "identifier": {
+          "name": "identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "verification_identifier_idx": {
+          "name": "verification_identifier_idx",
+          "columns": [
+            {
+              "expression": "identifier",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.family_story": {
+      "name": "family_story",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tree_id": {
+          "name": "tree_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "person_id": {
+          "name": "person_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "author_id": {
+          "name": "author_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "family_story_tree_person_idx": {
+          "name": "family_story_tree_person_idx",
+          "columns": [
+            {
+              "expression": "tree_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "person_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "family_story_tree_id_family_tree_id_fk": {
+          "name": "family_story_tree_id_family_tree_id_fk",
+          "tableFrom": "family_story",
+          "tableTo": "family_tree",
+          "columnsFrom": [
+            "tree_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "family_story_author_id_user_id_fk": {
+          "name": "family_story_author_id_user_id_fk",
+          "tableFrom": "family_story",
+          "tableTo": "user",
+          "columnsFrom": [
+            "author_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "family_story_tree_id_person_id_person_tree_id_id_fk": {
+          "name": "family_story_tree_id_person_id_person_tree_id_id_fk",
+          "tableFrom": "family_story",
+          "tableTo": "person",
+          "columnsFrom": [
+            "tree_id",
+            "person_id"
+          ],
+          "columnsTo": [
+            "tree_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "family_story_title_nonempty": {
+          "name": "family_story_title_nonempty",
+          "value": "length(btrim(\"family_story\".\"title\")) > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.family_tree": {
+      "name": "family_tree",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "family_tree_owner_idx": {
+          "name": "family_tree_owner_idx",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "family_tree_owner_id_user_id_fk": {
+          "name": "family_tree_owner_id_user_id_fk",
+          "tableFrom": "family_tree",
+          "tableTo": "user",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "family_tree_name_nonempty": {
+          "name": "family_tree_name_nonempty",
+          "value": "length(btrim(\"family_tree\".\"name\")) > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.parent_child": {
+      "name": "parent_child",
+      "schema": "",
+      "columns": {
+        "tree_id": {
+          "name": "tree_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "child_id": {
+          "name": "child_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "relation_type": {
+          "name": "relation_type",
+          "type": "parent_relation_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "parent_child_child_idx": {
+          "name": "parent_child_child_idx",
+          "columns": [
+            {
+              "expression": "tree_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "child_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "parent_child_tree_id_family_tree_id_fk": {
+          "name": "parent_child_tree_id_family_tree_id_fk",
+          "tableFrom": "parent_child",
+          "tableTo": "family_tree",
+          "columnsFrom": [
+            "tree_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "parent_child_tree_id_parent_id_person_tree_id_id_fk": {
+          "name": "parent_child_tree_id_parent_id_person_tree_id_id_fk",
+          "tableFrom": "parent_child",
+          "tableTo": "person",
+          "columnsFrom": [
+            "tree_id",
+            "parent_id"
+          ],
+          "columnsTo": [
+            "tree_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "parent_child_tree_id_child_id_person_tree_id_id_fk": {
+          "name": "parent_child_tree_id_child_id_person_tree_id_id_fk",
+          "tableFrom": "parent_child",
+          "tableTo": "person",
+          "columnsFrom": [
+            "tree_id",
+            "child_id"
+          ],
+          "columnsTo": [
+            "tree_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "parent_child_tree_id_parent_id_child_id_pk": {
+          "name": "parent_child_tree_id_parent_id_child_id_pk",
+          "columns": [
+            "tree_id",
+            "parent_id",
+            "child_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "parent_child_no_self": {
+          "name": "parent_child_no_self",
+          "value": "\"parent_child\".\"parent_id\" <> \"parent_child\".\"child_id\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.partnership": {
+      "name": "partnership",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tree_id": {
+          "name": "tree_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "person_a_id": {
+          "name": "person_a_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "person_b_id": {
+          "name": "person_b_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "partnership_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_year": {
+          "name": "start_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_month": {
+          "name": "start_month",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_day": {
+          "name": "start_day",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_qualifier": {
+          "name": "start_qualifier",
+          "type": "date_qualifier",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_year": {
+          "name": "end_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_month": {
+          "name": "end_month",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_day": {
+          "name": "end_day",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_qualifier": {
+          "name": "end_qualifier",
+          "type": "date_qualifier",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "partnership_person_a_idx": {
+          "name": "partnership_person_a_idx",
+          "columns": [
+            {
+              "expression": "tree_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "person_a_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "partnership_person_b_idx": {
+          "name": "partnership_person_b_idx",
+          "columns": [
+            {
+              "expression": "tree_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "person_b_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "partnership_tree_id_family_tree_id_fk": {
+          "name": "partnership_tree_id_family_tree_id_fk",
+          "tableFrom": "partnership",
+          "tableTo": "family_tree",
+          "columnsFrom": [
+            "tree_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "partnership_tree_id_person_a_id_person_tree_id_id_fk": {
+          "name": "partnership_tree_id_person_a_id_person_tree_id_id_fk",
+          "tableFrom": "partnership",
+          "tableTo": "person",
+          "columnsFrom": [
+            "tree_id",
+            "person_a_id"
+          ],
+          "columnsTo": [
+            "tree_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "partnership_tree_id_person_b_id_person_tree_id_id_fk": {
+          "name": "partnership_tree_id_person_b_id_person_tree_id_id_fk",
+          "tableFrom": "partnership",
+          "tableTo": "person",
+          "columnsFrom": [
+            "tree_id",
+            "person_b_id"
+          ],
+          "columnsTo": [
+            "tree_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "partnership_pair_kind_start_unique": {
+          "name": "partnership_pair_kind_start_unique",
+          "nullsNotDistinct": true,
+          "columns": [
+            "tree_id",
+            "person_a_id",
+            "person_b_id",
+            "kind",
+            "start_year",
+            "start_month",
+            "start_day"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "partnership_canonical_pair": {
+          "name": "partnership_canonical_pair",
+          "value": "\"partnership\".\"person_a_id\" < \"partnership\".\"person_b_id\""
+        },
+        "partnership_start_date_valid": {
+          "name": "partnership_start_date_valid",
+          "value": "(\n    (\"partnership\".\"start_year\" is null and \"partnership\".\"start_month\" is null and \"partnership\".\"start_day\" is null and \"partnership\".\"start_qualifier\" is null)\n    or (\n      \"partnership\".\"start_year\" is not null\n      and\n      \"partnership\".\"start_year\" between 1 and 9999\n      and \"partnership\".\"start_qualifier\" is not null\n      and (\"partnership\".\"start_month\" is null or \"partnership\".\"start_month\" between 1 and 12)\n      and (\"partnership\".\"start_day\" is null or (\"partnership\".\"start_month\" is not null and \"partnership\".\"start_day\" between 1 and 31))\n      and case\n        when \"partnership\".\"start_month\" between 1 and 12 and \"partnership\".\"start_day\" is not null\n          then \"partnership\".\"start_day\" <= extract(day from (make_date(\"partnership\".\"start_year\", \"partnership\".\"start_month\", 1) + interval '1 month - 1 day'))\n        else true\n      end\n    )\n  )"
+        },
+        "partnership_end_date_valid": {
+          "name": "partnership_end_date_valid",
+          "value": "(\n    (\"partnership\".\"end_year\" is null and \"partnership\".\"end_month\" is null and \"partnership\".\"end_day\" is null and \"partnership\".\"end_qualifier\" is null)\n    or (\n      \"partnership\".\"end_year\" is not null\n      and\n      \"partnership\".\"end_year\" between 1 and 9999\n      and \"partnership\".\"end_qualifier\" is not null\n      and (\"partnership\".\"end_month\" is null or \"partnership\".\"end_month\" between 1 and 12)\n      and (\"partnership\".\"end_day\" is null or (\"partnership\".\"end_month\" is not null and \"partnership\".\"end_day\" between 1 and 31))\n      and case\n        when \"partnership\".\"end_month\" between 1 and 12 and \"partnership\".\"end_day\" is not null\n          then \"partnership\".\"end_day\" <= extract(day from (make_date(\"partnership\".\"end_year\", \"partnership\".\"end_month\", 1) + interval '1 month - 1 day'))\n        else true\n      end\n    )\n  )"
+        },
+        "partnership_dates_ordered": {
+          "name": "partnership_dates_ordered",
+          "value": "(\n      \"partnership\".\"start_year\" is null or \"partnership\".\"end_year\" is null\n      or (\"partnership\".\"end_year\", coalesce(\"partnership\".\"end_month\", 12), coalesce(\"partnership\".\"end_day\", 31)) >=\n         (\"partnership\".\"start_year\", coalesce(\"partnership\".\"start_month\", 1), coalesce(\"partnership\".\"start_day\", 1))\n    )"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.person": {
+      "name": "person",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tree_id": {
+          "name": "tree_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "given_name": {
+          "name": "given_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "family_name": {
+          "name": "family_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferred_name": {
+          "name": "preferred_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "biography": {
+          "name": "biography",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "life_status": {
+          "name": "life_status",
+          "type": "life_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'unknown'"
+        },
+        "whereabouts_status": {
+          "name": "whereabouts_status",
+          "type": "whereabouts_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'unknown'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "person_tree_name_idx": {
+          "name": "person_tree_name_idx",
+          "columns": [
+            {
+              "expression": "tree_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "family_name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "given_name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "person_tree_display_name_idx": {
+          "name": "person_tree_display_name_idx",
+          "columns": [
+            {
+              "expression": "tree_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "display_name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "person_tree_id_family_tree_id_fk": {
+          "name": "person_tree_id_family_tree_id_fk",
+          "tableFrom": "person",
+          "tableTo": "family_tree",
+          "columnsFrom": [
+            "tree_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "person_tree_id_id_unique": {
+          "name": "person_tree_id_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "tree_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "person_display_name_nonempty": {
+          "name": "person_display_name_nonempty",
+          "value": "length(btrim(\"person\".\"display_name\")) > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.person_event": {
+      "name": "person_event",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tree_id": {
+          "name": "tree_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "person_id": {
+          "name": "person_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "person_event_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "year": {
+          "name": "year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "month": {
+          "name": "month",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "day": {
+          "name": "day",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qualifier": {
+          "name": "qualifier",
+          "type": "date_qualifier",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "place": {
+          "name": "place",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "person_event_person_idx": {
+          "name": "person_event_person_idx",
+          "columns": [
+            {
+              "expression": "tree_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "person_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "person_event_one_birth_idx": {
+          "name": "person_event_one_birth_idx",
+          "columns": [
+            {
+              "expression": "tree_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "person_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"person_event\".\"type\" = 'birth'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "person_event_one_death_idx": {
+          "name": "person_event_one_death_idx",
+          "columns": [
+            {
+              "expression": "tree_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "person_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"person_event\".\"type\" = 'death'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "person_event_tree_id_family_tree_id_fk": {
+          "name": "person_event_tree_id_family_tree_id_fk",
+          "tableFrom": "person_event",
+          "tableTo": "family_tree",
+          "columnsFrom": [
+            "tree_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "person_event_tree_id_person_id_person_tree_id_id_fk": {
+          "name": "person_event_tree_id_person_id_person_tree_id_id_fk",
+          "tableFrom": "person_event",
+          "tableTo": "person",
+          "columnsFrom": [
+            "tree_id",
+            "person_id"
+          ],
+          "columnsTo": [
+            "tree_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "person_event_date_valid": {
+          "name": "person_event_date_valid",
+          "value": "(\n    (\"person_event\".\"year\" is null and \"person_event\".\"month\" is null and \"person_event\".\"day\" is null and \"person_event\".\"qualifier\" is null)\n    or (\n      \"person_event\".\"year\" is not null\n      and\n      \"person_event\".\"year\" between 1 and 9999\n      and \"person_event\".\"qualifier\" is not null\n      and (\"person_event\".\"month\" is null or \"person_event\".\"month\" between 1 and 12)\n      and (\"person_event\".\"day\" is null or (\"person_event\".\"month\" is not null and \"person_event\".\"day\" between 1 and 31))\n      and case\n        when \"person_event\".\"month\" between 1 and 12 and \"person_event\".\"day\" is not null\n          then \"person_event\".\"day\" <= extract(day from (make_date(\"person_event\".\"year\", \"person_event\".\"month\", 1) + interval '1 month - 1 day'))\n        else true\n      end\n    )\n  )"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.tree_collaborator": {
+      "name": "tree_collaborator",
+      "schema": "",
+      "columns": {
+        "tree_id": {
+          "name": "tree_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "collaborator_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "tree_collaborator_user_idx": {
+          "name": "tree_collaborator_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "tree_collaborator_tree_id_family_tree_id_fk": {
+          "name": "tree_collaborator_tree_id_family_tree_id_fk",
+          "tableFrom": "tree_collaborator",
+          "tableTo": "family_tree",
+          "columnsFrom": [
+            "tree_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "tree_collaborator_user_id_user_id_fk": {
+          "name": "tree_collaborator_user_id_user_id_fk",
+          "tableFrom": "tree_collaborator",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "tree_collaborator_tree_id_user_id_pk": {
+          "name": "tree_collaborator_tree_id_user_id_pk",
+          "columns": [
+            "tree_id",
+            "user_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.collaborator_role": {
+      "name": "collaborator_role",
+      "schema": "public",
+      "values": [
+        "editor",
+        "viewer"
+      ]
+    },
+    "public.date_qualifier": {
+      "name": "date_qualifier",
+      "schema": "public",
+      "values": [
+        "exact",
+        "approximate",
+        "before",
+        "after"
+      ]
+    },
+    "public.person_event_type": {
+      "name": "person_event_type",
+      "schema": "public",
+      "values": [
+        "birth",
+        "death",
+        "disappearance",
+        "last_contact",
+        "found",
+        "other"
+      ]
+    },
+    "public.life_status": {
+      "name": "life_status",
+      "schema": "public",
+      "values": [
+        "living",
+        "deceased",
+        "unknown"
+      ]
+    },
+    "public.parent_relation_type": {
+      "name": "parent_relation_type",
+      "schema": "public",
+      "values": [
+        "biological",
+        "adoptive",
+        "other"
+      ]
+    },
+    "public.partnership_kind": {
+      "name": "partnership_kind",
+      "schema": "public",
+      "values": [
+        "marriage",
+        "union",
+        "partnership"
+      ]
+    },
+    "public.whereabouts_status": {
+      "name": "whereabouts_status",
+      "schema": "public",
+      "values": [
+        "known",
+        "missing",
+        "unknown"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

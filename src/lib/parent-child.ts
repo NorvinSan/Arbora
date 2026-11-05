@@ -1,29 +1,11 @@
 import { sql } from "drizzle-orm";
-import { db } from "@/db";
 import type { z } from "zod";
 import type { createParentChildSchema, deleteParentChildSchema } from "@/lib/tree-form-schemas";
+import { withWritableTree } from "@/lib/tree-write";
 
 type Relation = z.output<typeof deleteParentChildSchema>;
 type CreateRelation = z.output<typeof createParentChildSchema>;
 type Result = { ok: true } | { ok: false; message: string };
-
-// Locking the tree serializes relation writes in that tree. Without this lock,
-// concurrent requests could each pass the cycle check and then create a cycle.
-async function withWritableTree(userId: string, treeId: string, work: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<Result>): Promise<Result> {
-  return db.transaction(async (tx) => {
-    const access = await tx.execute(sql`
-      select id from family_tree
-      where id = ${treeId} and (
-        owner_id = ${userId} or exists (
-          select 1 from tree_collaborator
-          where tree_id = ${treeId} and user_id = ${userId} and role = 'editor'
-        )
-      ) for update
-    `);
-    if (access.rows.length === 0) return { ok: false, message: "No tienes permiso para modificar las relaciones de este árbol." };
-    return work(tx);
-  });
-}
 
 export async function createParentChild(userId: string, { treeId, parentId, childId, relationType }: CreateRelation): Promise<Result> {
   if (parentId === childId) return { ok: false, message: "Una persona no puede ser su propio progenitor." };

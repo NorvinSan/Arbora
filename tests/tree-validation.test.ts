@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { addPersonSchema, createParentChildSchema, createTreeSchema, deleteParentChildSchema } from "../src/lib/tree-form-schemas";
+import { addPersonSchema, createParentChildSchema, createPartnershipSchema, createTreeSchema, deleteParentChildSchema, deletePartnershipSchema } from "../src/lib/tree-form-schemas";
 
 describe("árboles familiares", () => {
   it("exige un nombre y normaliza los espacios", () => {
@@ -54,5 +54,29 @@ describe("integrantes", () => {
     assert.equal(addPersonSchema.safeParse({ ...valid, treeId: "otro árbol" }).success, false);
     assert.equal(addPersonSchema.safeParse({ ...valid, displayName: "  " }).success, false);
     assert.equal(addPersonSchema.safeParse({ ...valid, lifeStatus: "missing" }).success, false);
+  });
+});
+
+describe("relaciones de pareja", () => {
+  const valid = {
+    treeId: "0194c35a-f60a-7c5a-9748-ec474469deba",
+    personAId: "0194c35a-f60a-7c5a-9748-ec474469debb",
+    personBId: "0194c35a-f60a-7c5a-9748-ec474469debc",
+    kind: "marriage", startDate: "2020-02-29", endDate: "",
+  };
+
+  it("acepta los tres tipos y fechas desconocidas", () => {
+    for (const kind of ["marriage", "union", "partnership"]) {
+      assert.equal(createPartnershipSchema.safeParse({ ...valid, kind, startDate: "", endDate: "" }).success, true);
+    }
+    assert.equal(createPartnershipSchema.safeParse({ ...valid, kind: "other" }).success, false);
+  });
+
+  it("rechaza autorrelaciones y fechas inválidas o invertidas", () => {
+    assert.equal(createPartnershipSchema.safeParse({ ...valid, personBId: valid.personAId }).success, false);
+    assert.equal(createPartnershipSchema.safeParse({ ...valid, startDate: "2021-02-29" }).success, false);
+    assert.equal(createPartnershipSchema.safeParse({ ...valid, endDate: "2019-12-31" }).success, false);
+    assert.equal(createPartnershipSchema.safeParse({ ...valid, startDate: "", endDate: "2019-12-31" }).success, true);
+    assert.equal(deletePartnershipSchema.safeParse({ treeId: valid.treeId, partnershipId: "mal" }).success, false);
   });
 });

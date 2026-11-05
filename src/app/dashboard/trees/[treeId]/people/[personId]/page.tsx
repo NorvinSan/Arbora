@@ -2,11 +2,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, GitBranch, UsersRound } from "lucide-react";
 import { RemoveRelationButton } from "@/components/remove-relation-button";
+import { RemovePartnershipButton } from "@/components/remove-partnership-button";
 import { requireSession } from "@/lib/session";
 import { getAccessiblePerson, getAccessibleTree, getFamilyRelations } from "@/lib/trees";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const labels = { biological: "Biológico", adoptive: "Adoptivo", other: "No especificado" };
+const partnershipLabels = { marriage: "Matrimonio", union: "Unión", partnership: "Pareja" };
+
+function formatPartialDate(year: number | null, month: number | null, day: number | null, qualifier: string | null) {
+  if (year === null) return null;
+  const date = [day, month].filter((part) => part !== null).map((part) => String(part).padStart(2, "0")).concat(String(year).padStart(4, "0")).join("/");
+  const prefix = { approximate: "Aprox. ", before: "Antes de ", after: "Después de ", exact: "" }[qualifier ?? "exact"] ?? "";
+  return `${prefix}${date}`;
+}
 
 export default async function PersonPage({ params }: { params: Promise<{ treeId: string; personId: string }> }) {
   const { user } = await requireSession();
@@ -17,7 +26,7 @@ export default async function PersonPage({ params }: { params: Promise<{ treeId:
   if (!tree) notFound();
   const member = await getAccessiblePerson(user.id, treeId, personId);
   if (!member) notFound();
-  const { parents, children } = await getFamilyRelations(treeId, personId);
+  const { parents, children, partners } = await getFamilyRelations(treeId, personId);
   const canEdit = tree.ownerId === user.id || tree.collaboratorRole === "editor";
 
   return (
@@ -54,6 +63,28 @@ export default async function PersonPage({ params }: { params: Promise<{ treeId:
           </div>
         ))}
         </div>
+      </section>
+      <section aria-label="Parejas" className="space-y-6">
+        <div><p className="eyebrow mb-2">Vínculos de pareja</p><h2 className="section-title">Parejas</h2></div>
+        {partners.length === 0 ? (
+          <div className="soft-panel border-dashed p-5 text-sm text-[#718274]">No hay relaciones de pareja registradas.</div>
+        ) : (
+          <ul className="grid items-start gap-4 sm:grid-cols-2">
+            {partners.map((partner) => (
+              <li key={partner.partnershipId} className="soft-panel space-y-3 p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link href={`/dashboard/trees/${treeId}/people/${partner.id}`} className="text-link inline-flex max-w-full items-center gap-1 font-semibold"><span className="truncate">{partner.displayName}</span><ArrowUpRight className="size-4 shrink-0" /></Link>
+                    <p className="mt-1 text-sm text-[#667a6a]">{partnershipLabels[partner.kind]}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-[#667a6a]">Inicio: {formatPartialDate(partner.startYear, partner.startMonth, partner.startDay, partner.startQualifier) ?? "Sin fecha de inicio"}</p>
+                <p className="text-sm text-[#667a6a]">Fin: {formatPartialDate(partner.endYear, partner.endMonth, partner.endDay, partner.endQualifier) ?? "Sin fecha de fin"}</p>
+                {canEdit && <div className="border-t border-[#e8eee5] pt-3"><RemovePartnershipButton treeId={treeId} partnershipId={partner.partnershipId} /></div>}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );

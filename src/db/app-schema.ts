@@ -19,7 +19,7 @@ import { user } from "./schema";
 export const lifeStatus = pgEnum("life_status", ["living", "deceased", "unknown"]);
 export const whereaboutsStatus = pgEnum("whereabouts_status", ["known", "missing", "unknown"]);
 export const parentRelationType = pgEnum("parent_relation_type", ["biological", "adoptive", "other"]);
-export const partnershipKind = pgEnum("partnership_kind", ["marriage", "partnership", "other"]);
+export const partnershipKind = pgEnum("partnership_kind", ["marriage", "union", "partnership"]);
 export const eventType = pgEnum("person_event_type", [
   "birth", "death", "disappearance", "last_contact", "found", "other",
 ]);
@@ -134,9 +134,17 @@ export const partnership = pgTable(
     foreignKey({ columns: [table.treeId, table.personBId], foreignColumns: [person.treeId, person.id] }).onDelete("cascade"),
     index("partnership_person_a_idx").on(table.treeId, table.personAId),
     index("partnership_person_b_idx").on(table.treeId, table.personBId),
+    unique("partnership_pair_kind_start_unique")
+      .on(table.treeId, table.personAId, table.personBId, table.kind, table.startYear, table.startMonth, table.startDay)
+      .nullsNotDistinct(),
     check("partnership_canonical_pair", sql`${table.personAId} < ${table.personBId}`),
     check("partnership_start_date_valid", partialDateIsValid(table.startYear, table.startMonth, table.startDay, table.startQualifier)),
     check("partnership_end_date_valid", partialDateIsValid(table.endYear, table.endMonth, table.endDay, table.endQualifier)),
+    check("partnership_dates_ordered", sql`(
+      ${table.startYear} is null or ${table.endYear} is null
+      or (${table.endYear}, coalesce(${table.endMonth}, 12), coalesce(${table.endDay}, 31)) >=
+         (${table.startYear}, coalesce(${table.startMonth}, 1), coalesce(${table.startDay}, 1))
+    )`),
   ],
 );
 

@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowUpRight, GitBranch, UsersRound } from "lucide-react";
 import { notFound } from "next/navigation";
 import { AddPersonForm } from "@/components/add-person-form";
 import { ParentChildForm } from "@/components/parent-child-form";
+import { PartnershipForm } from "@/components/partnership-form";
 import { requireSession } from "@/lib/session";
 import { getAccessiblePeople, getAccessibleTree } from "@/lib/trees";
 
@@ -51,6 +52,7 @@ export default async function TreePage({ params }: { params: Promise<{ treeId: s
         <aside className="space-y-5" aria-label="Editar árbol">
           <AddPersonForm treeId={tree.id} />
           <ParentChildForm treeId={tree.id} people={people} />
+          <PartnershipForm treeId={tree.id} people={people} />
         </aside>
       ) : <aside className="soft-panel p-6 text-sm leading-6 text-[#607266]">Tienes acceso de lectura a este árbol. Puedes explorar las personas y sus vínculos familiares.</aside>}
       </div>

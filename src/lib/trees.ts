@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, desc, eq, or } from "drizzle-orm";
 import { db } from "@/db";
-import { familyTree, parentChild, person, treeCollaborator } from "@/db/app-schema";
+import { familyTree, parentChild, partnership, person, treeCollaborator } from "@/db/app-schema";
 
 // Authorization is part of the database query, not just the navigation UI.
 export async function getAccessibleTrees(userId: string) {
@@ -75,7 +75,7 @@ export async function getAccessiblePerson(userId: string, treeId: string, person
 
 // Call after checking access to the tree and the profile person.
 export async function getFamilyRelations(treeId: string, personId: string) {
-  const [parents, children] = await Promise.all([
+  const [parents, children, partners] = await Promise.all([
     db.select({ id: person.id, displayName: person.displayName, relationType: parentChild.relationType })
       .from(parentChild)
       .innerJoin(person, and(eq(person.treeId, parentChild.treeId), eq(person.id, parentChild.parentId)))
@@ -86,6 +86,19 @@ export async function getFamilyRelations(treeId: string, personId: string) {
       .innerJoin(person, and(eq(person.treeId, parentChild.treeId), eq(person.id, parentChild.childId)))
       .where(and(eq(parentChild.treeId, treeId), eq(parentChild.parentId, personId)))
       .orderBy(person.displayName),
+    db.select({
+      id: person.id, displayName: person.displayName, partnershipId: partnership.id,
+      kind: partnership.kind, startYear: partnership.startYear, startMonth: partnership.startMonth,
+      startDay: partnership.startDay, startQualifier: partnership.startQualifier,
+      endYear: partnership.endYear, endMonth: partnership.endMonth,
+      endDay: partnership.endDay, endQualifier: partnership.endQualifier,
+    }).from(partnership)
+      .innerJoin(person, and(eq(person.treeId, partnership.treeId), or(
+        and(eq(partnership.personAId, personId), eq(person.id, partnership.personBId)),
+        and(eq(partnership.personBId, personId), eq(person.id, partnership.personAId)),
+      )))
+      .where(and(eq(partnership.treeId, treeId), or(eq(partnership.personAId, personId), eq(partnership.personBId, personId))))
+      .orderBy(desc(partnership.createdAt)),
   ]);
-  return { parents, children };
+  return { parents, children, partners };
 }
