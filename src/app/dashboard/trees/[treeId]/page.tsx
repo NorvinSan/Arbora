@@ -2,10 +2,12 @@ import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, GitBranch, UsersRound } from "lucide-react";
 import { notFound } from "next/navigation";
 import { AddPersonForm } from "@/components/add-person-form";
+import { FamilyTreeCanvas } from "@/components/family-tree-canvas";
 import { ParentChildForm } from "@/components/parent-child-form";
 import { PartnershipForm } from "@/components/partnership-form";
 import { requireSession } from "@/lib/session";
-import { getAccessiblePeople, getAccessibleTree } from "@/lib/trees";
+import { getAccessibleTreeGraph } from "@/lib/tree-graph-data";
+import { getAccessibleTree } from "@/lib/trees";
 
 export default async function TreePage({ params }: { params: Promise<{ treeId: string }> }) {
   const { user } = await requireSession();
@@ -15,7 +17,9 @@ export default async function TreePage({ params }: { params: Promise<{ treeId: s
   const tree = await getAccessibleTree(user.id, treeId);
   if (!tree) notFound();
 
-  const people = await getAccessiblePeople(user.id, tree.id);
+  const graph = await getAccessibleTreeGraph(user.id, tree.id);
+  if (!graph) notFound();
+  const { people } = graph;
 
   return (
     <div className="space-y-8 lg:space-y-10">
@@ -28,6 +32,7 @@ export default async function TreePage({ params }: { params: Promise<{ treeId: s
         </div>
         <span className="inline-flex items-center gap-2 rounded-full border border-[#d4e4d0] bg-[#ebf3e8] px-4 py-2 text-sm font-medium text-[#356747]"><UsersRound className="size-4" /> {people.length} {people.length === 1 ? "persona" : "personas"}</span>
       </header>
+      {people.length > 0 && <FamilyTreeCanvas treeId={tree.id} data={graph} />}
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(320px,390px)] lg:gap-10">
       <section aria-label="Familiares" className="space-y-5">
         <div><p className="eyebrow mb-2">Explora conexiones</p><h2 className="section-title">Familiares</h2></div>

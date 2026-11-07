@@ -72,6 +72,17 @@ test("cuentas, sesiones y aislamiento de árboles con PostgreSQL real", { timeou
     assert.doesNotMatch(unauthorizedBody, new RegExp(treeName), "Otro usuario no puede consultar un árbol privado.");
     assert.match(unauthorizedBody, /Árbol no disponible/, "El usuario no autorizado debe ver el estado de no encontrado.");
 
+    const secondSession = await fetch(new URL("/api/auth/get-session", baseURL), { headers: { Cookie: secondCookie } });
+    const secondUser = (await secondSession.json()).user;
+    await pool.query("INSERT INTO tree_collaborator (tree_id, user_id, role) VALUES ($1, $2, 'viewer')", [treeId, secondUser.id]);
+    await pool.query("INSERT INTO person (tree_id, display_name) VALUES ($1, 'Persona de prueba')", [treeId]);
+    const viewerTree = await fetch(new URL(`/dashboard/trees/${treeId}`, baseURL), { headers: { Cookie: secondCookie } });
+    assert.equal(viewerTree.status, 200);
+    const viewerBody = await viewerTree.text();
+    assert.match(viewerBody, /Árbol interactivo/);
+    assert.match(viewerBody, /Tienes acceso de lectura a este árbol/);
+    assert.doesNotMatch(viewerBody, /Registrar pareja/, "Un lector no debe ver formularios de edición.");
+
     const updated = await post("update-user", { name: "Ana actualizada" }, firstCookie);
     assert.equal(updated.status, 200, await updated.text());
     const changed = await post("change-password", { currentPassword: originalPassword, newPassword: changedPassword, revokeOtherSessions: true }, firstCookie);
