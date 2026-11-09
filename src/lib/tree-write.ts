@@ -15,7 +15,7 @@ export async function withWritableTree<T extends { ok: true }>(userId: string, t
         )
       ) for update
     `);
-    if (access.rows.length === 0) return { ok: false, message: "No tienes permiso para modificar las relaciones de este árbol." };
+    if (access.rows.length === 0) return { ok: false, message: "No tienes permiso para modificar este árbol." };
     return work(tx);
   });
 }

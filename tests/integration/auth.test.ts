@@ -75,13 +75,26 @@ test("cuentas, sesiones y aislamiento de árboles con PostgreSQL real", { timeou
     const secondSession = await fetch(new URL("/api/auth/get-session", baseURL), { headers: { Cookie: secondCookie } });
     const secondUser = (await secondSession.json()).user;
     await pool.query("INSERT INTO tree_collaborator (tree_id, user_id, role) VALUES ($1, $2, 'viewer')", [treeId, secondUser.id]);
-    await pool.query("INSERT INTO person (tree_id, display_name) VALUES ($1, 'Persona de prueba')", [treeId]);
+    const member = await pool.query("INSERT INTO person (tree_id, display_name) VALUES ($1, 'Persona de prueba') RETURNING id", [treeId]);
+    const personId = member.rows[0].id as string;
+    await pool.query("INSERT INTO person_event (tree_id, person_id, type, title, year, qualifier, place, description) VALUES ($1, $2, 'education', 'Graduación de prueba', 2001, 'exact', 'Sevilla', 'Terminó sus estudios')", [treeId, personId]);
     const viewerTree = await fetch(new URL(`/dashboard/trees/${treeId}`, baseURL), { headers: { Cookie: secondCookie } });
     assert.equal(viewerTree.status, 200);
     const viewerBody = await viewerTree.text();
     assert.match(viewerBody, /Árbol interactivo/);
     assert.match(viewerBody, /Tienes acceso de lectura a este árbol/);
     assert.doesNotMatch(viewerBody, /Registrar pareja/, "Un lector no debe ver formularios de edición.");
+
+    const profilePath = `/dashboard/trees/${treeId}/people/${personId}`;
+    const viewerProfile = await fetch(new URL(profilePath, baseURL), { headers: { Cookie: secondCookie } });
+    assert.equal(viewerProfile.status, 200);
+    const viewerProfileBody = await viewerProfile.text();
+    assert.match(viewerProfileBody, /Historia de vida/);
+    assert.match(viewerProfileBody, /Graduación de prueba/);
+    assert.match(viewerProfileBody, /Sevilla/);
+    assert.doesNotMatch(viewerProfileBody, /Agregar acontecimiento/);
+    const ownerProfile = await fetch(new URL(profilePath, baseURL), { headers: { Cookie: firstCookie } });
+    assert.match(await ownerProfile.text(), /Agregar acontecimiento/);
 
     const updated = await post("update-user", { name: "Ana actualizada" }, firstCookie);
     assert.equal(updated.status, 200, await updated.text());

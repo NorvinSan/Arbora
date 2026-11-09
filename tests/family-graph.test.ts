@@ -47,3 +47,32 @@ test("una pareja con varios períodos solo dibuja una línea, sin perder sus ví
 test("árbol sin personas no genera conexiones", async () => {
   assert.deepEqual(await layoutFamilyGraph({ people: [], parents: [], partners: [] }), { nodes: [], edges: [] });
 });
+
+test("múltiples parejas y medios hermanos conservan generaciones, conexiones y nodos separados", async () => {
+  const data: FamilyGraphData = {
+    people: ["grandmother", "grandfather", "mother", "firstPartner", "secondPartner", "thirdPartner", "firstChild", "secondChild"].map(person),
+    parents: [
+      { parentId: "grandmother", childId: "mother" }, { parentId: "grandfather", childId: "mother" },
+      { parentId: "mother", childId: "firstChild" }, { parentId: "firstPartner", childId: "firstChild" },
+      { parentId: "mother", childId: "secondChild" }, { parentId: "secondPartner", childId: "secondChild" },
+    ],
+    partners: [
+      { personAId: "grandmother", personBId: "grandfather" },
+      { personAId: "mother", personBId: "firstPartner" },
+      { personAId: "mother", personBId: "secondPartner" },
+      { personAId: "mother", personBId: "thirdPartner" },
+    ],
+  };
+  const { nodes, edges } = await layoutFamilyGraph(data);
+  const positions = new Map(nodes.map((node) => [node.id, node.position]));
+  assert.equal(edges.filter((edge) => edge.id.startsWith("parent:")).length, 6);
+  assert.equal(edges.filter((edge) => edge.id.startsWith("partner:")).length, 4);
+  assert.ok(edges.some((edge) => edge.type === "partnerArc"));
+  assert.ok(positions.get("grandmother")!.y < positions.get("mother")!.y);
+  assert.ok(positions.get("mother")!.y < positions.get("firstChild")!.y);
+  assert.equal(positions.get("firstChild")!.y, positions.get("secondChild")!.y);
+  for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+    const a = nodes[i].position, b = nodes[j].position;
+    assert.ok(a.x + 160 <= b.x || b.x + 160 <= a.x || a.y + 72 <= b.y || b.y + 72 <= a.y, `${nodes[i].id} y ${nodes[j].id} se superponen`);
+  }
+});

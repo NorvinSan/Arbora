@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Background, Controls, Handle, Position, ReactFlow, ReactFlowProvider,
-  useNodesInitialized, useReactFlow, type Edge, type NodeProps,
+  Background, BaseEdge, Controls, Handle, Position, ReactFlow, ReactFlowProvider,
+  useNodesInitialized, useReactFlow, type Edge, type EdgeProps, type NodeProps,
 } from "@xyflow/react";
 import { Button } from "@/components/ui/button";
 import { layoutFamilyGraph, type FamilyGraphData, type FamilyNode } from "@/lib/family-graph";
@@ -25,6 +25,14 @@ function PersonCard({ data }: NodeProps<FamilyNode>) {
 }
 
 const nodeTypes = { person: PersonCard };
+
+function PartnerArc({ sourceX, sourceY, targetX, targetY, style, data }: EdgeProps) {
+  // Non-adjacent partners route above the entire row, clear of intermediate cards.
+  const top = sourceY - 72 - Math.max(0, Number(data?.hops ?? 2) - 2) * 16;
+  return <BaseEdge path={`M ${sourceX} ${sourceY} L ${sourceX + 18} ${sourceY} L ${sourceX + 18} ${top} L ${targetX - 18} ${top} L ${targetX - 18} ${targetY} L ${targetX} ${targetY}`} style={style} />;
+}
+
+const edgeTypes = { partnerArc: PartnerArc };
 
 function Canvas({ treeId, data }: { treeId: string; data: FamilyGraphData }) {
   const router = useRouter();
@@ -64,6 +72,7 @@ function Canvas({ treeId, data }: { treeId: string; data: FamilyGraphData }) {
           nodes={graph?.nodes ?? []}
           edges={graph?.edges ?? []}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           onNodeClick={(_, node) => router.push(`/dashboard/trees/${treeId}/people/${node.id}`)}
           nodesDraggable={false}
           nodesConnectable={false}

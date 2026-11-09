@@ -21,7 +21,8 @@ export const whereaboutsStatus = pgEnum("whereabouts_status", ["known", "missing
 export const parentRelationType = pgEnum("parent_relation_type", ["biological", "adoptive", "other"]);
 export const partnershipKind = pgEnum("partnership_kind", ["marriage", "union", "partnership"]);
 export const eventType = pgEnum("person_event_type", [
-  "birth", "death", "disappearance", "last_contact", "found", "other",
+  "birth", "death", "marriage", "move", "education", "work",
+  "disappearance", "last_contact", "found", "other",
 ]);
 export const dateQualifier = pgEnum("date_qualifier", ["exact", "approximate", "before", "after"]);
 export const collaboratorRole = pgEnum("collaborator_role", ["editor", "viewer"]);
@@ -155,6 +156,7 @@ export const personEvent = pgTable(
     treeId: uuid("tree_id").notNull().references(() => familyTree.id, { onDelete: "cascade" }),
     personId: uuid("person_id").notNull(),
     type: eventType("type").notNull(),
+    title: text("title").notNull(),
     year: integer("year"),
     month: integer("month"),
     day: integer("day"),
@@ -169,6 +171,7 @@ export const personEvent = pgTable(
     index("person_event_person_idx").on(table.treeId, table.personId, table.type),
     uniqueIndex("person_event_one_birth_idx").on(table.treeId, table.personId).where(sql`${table.type} = 'birth'`),
     uniqueIndex("person_event_one_death_idx").on(table.treeId, table.personId).where(sql`${table.type} = 'death'`),
+    check("person_event_title_nonempty", sql`length(btrim(${table.title})) > 0`),
     check("person_event_date_valid", partialDateIsValid(table.year, table.month, table.day, table.qualifier)),
   ],
 );

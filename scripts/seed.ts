@@ -116,7 +116,7 @@ async function main() {
       personKey: PersonKey,
       type: EventInsert["type"],
       details: Pick<EventInsert, "year" | "month" | "day" | "qualifier" | "place" | "description">,
-    ): EventInsert => ({ id: id(`event:${key}`), treeId, personId: peopleIds[personKey], type, ...details });
+    ): EventInsert => ({ id: id(`event:${key}`), treeId, personId: peopleIds[personKey], type, title: ({ birth: "Nacimiento", death: "Fallecimiento", last_contact: "Último contacto", disappearance: "Desaparición" } as Record<string, string>)[type] ?? "Acontecimiento", ...details });
 
     const events = [
       event("elena-birth", "elena", "birth", { year: 1936, qualifier: "approximate" }),

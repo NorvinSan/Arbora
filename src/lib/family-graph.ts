@@ -43,6 +43,14 @@ export function buildFamilyGraph(data: FamilyGraphData) {
   }
   for (const members of groups.values()) {
     members.sort((a, b) => people.get(a)!.displayName.localeCompare(people.get(b)!.displayName, "es") || a.localeCompare(b));
+    if (members.length > 2) {
+      const degree = (id: string) => [...partnerPairs.values()].filter(([a, b]) => a === id || b === id).length;
+      const hub = members.reduce((best, id) => degree(id) > degree(best) ? id : best, members[0]);
+      if (degree(hub) > 1) {
+        members.splice(members.indexOf(hub), 1);
+        members.splice(Math.floor(members.length / 2), 0, hub);
+      }
+    }
   }
 
   const nodes: FamilyNode[] = data.people.map((person) => ({
@@ -71,7 +79,8 @@ export function buildFamilyGraph(data: FamilyGraphData) {
     const members = groups.get(root(personAId))!;
     const [left, right] = members.indexOf(personAId) < members.indexOf(personBId)
       ? [personAId, personBId] : [personBId, personAId];
-    edges.push({ id: `partner:${id}`, source: left, target: right, sourceHandle: "partner-right", targetHandle: "partner-left", type: "straight", style: { stroke: "#ad7b77", strokeWidth: 2, strokeDasharray: "5 4" }, zIndex: 2 });
+    const hops = members.indexOf(right) - members.indexOf(left);
+    edges.push({ id: `partner:${id}`, source: left, target: right, sourceHandle: "partner-right", targetHandle: "partner-left", type: hops > 1 ? "partnerArc" : "straight", data: { hops }, style: { stroke: "#ad7b77", strokeWidth: 2, strokeDasharray: "5 4" }, zIndex: 2 });
   }
   return { nodes, edges, groups, groupEdges };
 }
