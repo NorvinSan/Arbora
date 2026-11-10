@@ -10,6 +10,7 @@ import {
   partnership,
   person,
   personEvent,
+  storyPerson,
 } from "../src/db/app-schema";
 import { user } from "../src/db/schema";
 
@@ -156,8 +157,9 @@ async function main() {
       await tx.insert(personEvent).values(events).onConflictDoNothing();
       await tx.insert(familyStory).values([
         { id: id("story:family"), treeId, authorId: owner.id, title: "Recuerdos de familia", body: "Elena conservó cartas y fotografías que hoy ayudan a reconstruir la historia familiar." },
-        { id: id("story:gabriel"), treeId, personId: peopleIds.gabriel, authorId: owner.id, title: "Últimas noticias de Gabriel", body: "El paradero de Gabriel sigue sin confirmarse. La familia conserva las fechas como aproximadas." },
+        { id: id("story:gabriel"), treeId, authorId: owner.id, title: "Últimas noticias de Gabriel", body: "El paradero de Gabriel sigue sin confirmarse. La familia conserva las fechas como aproximadas." },
       ]).onConflictDoNothing();
+      await tx.insert(storyPerson).values({ treeId, storyId: id("story:gabriel"), personId: peopleIds.gabriel }).onConflictDoNothing();
     });
 
     console.log("Seed listo: 1 árbol ficticio, 7 personas, 8 vínculos padre-hijo, 2 parejas, 11 eventos y 2 historias.");

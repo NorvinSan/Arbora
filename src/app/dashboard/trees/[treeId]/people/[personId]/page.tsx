@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, GitBranch, UsersRound } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BookOpen, GitBranch, UsersRound } from "lucide-react";
 import { RemoveRelationButton } from "@/components/remove-relation-button";
 import { RemovePartnershipButton } from "@/components/remove-partnership-button";
 import { EventForm } from "@/components/event-form";
 import { eventLabels, formatEventDate } from "@/lib/event-form-schemas";
 import { getPersonEvents } from "@/lib/person-events";
+import { getAccessibleStories } from "@/lib/family-stories";
 import { requireSession } from "@/lib/session";
 import { getAccessiblePerson, getAccessibleTree, getFamilyRelations } from "@/lib/trees";
 
@@ -29,7 +30,8 @@ export default async function PersonPage({ params }: { params: Promise<{ treeId:
   if (!tree) notFound();
   const member = await getAccessiblePerson(user.id, treeId, personId);
   if (!member) notFound();
-  const [{ parents, children, partners }, events] = await Promise.all([getFamilyRelations(treeId, personId), getPersonEvents(treeId, personId)]);
+  const [{ parents, children, partners }, events, stories] = await Promise.all([getFamilyRelations(treeId, personId), getPersonEvents(treeId, personId), getAccessibleStories(user.id, treeId, { personId })]);
+  if (!stories) notFound();
   const canEdit = tree.ownerId === user.id || tree.collaboratorRole === "editor";
 
   return (
@@ -58,6 +60,11 @@ export default async function PersonPage({ params }: { params: Promise<{ treeId:
           </ol>
         )}
         {canEdit && <div className="soft-panel p-5 sm:p-6"><h3 className="mb-4 font-heading text-xl font-semibold text-[#193d2b]">Agregar acontecimiento</h3><EventForm treeId={treeId} personId={personId} /></div>}
+      </section>
+      <section aria-label="Historias familiares" className="space-y-5">
+        <div><p className="eyebrow mb-2 inline-flex items-center gap-2"><BookOpen className="size-4" /> Recuerdos compartidos</p><h2 className="section-title">Historias familiares</h2></div>
+        {stories.length === 0 ? <p className="soft-panel border-dashed p-6 text-sm text-[#718274]">Todavía no hay relatos asociados a esta persona. <Link className="text-link" href={`/dashboard/trees/${treeId}/stories`}>Ver las historias del árbol</Link></p> :
+          <ul className="grid gap-4 sm:grid-cols-2">{stories.map((story) => <li key={story.id} className="soft-panel space-y-2 p-5"><p className="text-xs text-[#718274]">{story.createdAt.toLocaleDateString("es-ES", { dateStyle: "long" })}</p><Link className="text-link font-heading text-xl" href={`/dashboard/trees/${treeId}/stories/${story.id}`}>{story.title}</Link><p className="line-clamp-2 whitespace-pre-wrap text-sm text-[#516655]">{story.body}</p></li>)}</ul>}
       </section>
       <section aria-label="Familiares" className="space-y-6">
         <div><p className="eyebrow mb-2">Personas que nos conectan</p><h2 className="section-title">Vínculos familiares</h2></div>

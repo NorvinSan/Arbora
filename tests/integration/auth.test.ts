@@ -96,6 +96,27 @@ test("cuentas, sesiones y aislamiento de árboles con PostgreSQL real", { timeou
     const ownerProfile = await fetch(new URL(profilePath, baseURL), { headers: { Cookie: firstCookie } });
     assert.match(await ownerProfile.text(), /Agregar acontecimiento/);
 
+    const story = await pool.query("INSERT INTO family_story (tree_id, author_id, title, body) VALUES ($1, $2, 'Relato de prueba', 'Una historia compartida') RETURNING id", [treeId, sessionData.user.id]);
+    const storyId = story.rows[0].id as string;
+    await pool.query("INSERT INTO story_person (tree_id, story_id, person_id) VALUES ($1, $2, $3)", [treeId, storyId, personId]);
+    const storiesPath = `/dashboard/trees/${treeId}/stories`;
+    const detailPath = `${storiesPath}/${storyId}`;
+    const viewerStories = await fetch(new URL(storiesPath, baseURL), { headers: { Cookie: secondCookie } });
+    assert.equal(viewerStories.status, 200);
+    assert.match(await viewerStories.text(), /Relato de prueba/);
+    const viewerDetail = await fetch(new URL(detailPath, baseURL), { headers: { Cookie: secondCookie } });
+    assert.equal(viewerDetail.status, 200);
+    const detailBody = await viewerDetail.text();
+    assert.match(detailBody, /Una historia compartida/);
+    assert.match(detailBody, new RegExp(profilePath));
+    assert.doesNotMatch(detailBody, /Editar relato y participantes/);
+    const ownerDetail = await fetch(new URL(detailPath, baseURL), { headers: { Cookie: firstCookie } });
+    assert.match(await ownerDetail.text(), /Editar relato y participantes/);
+    const profileWithStory = await fetch(new URL(profilePath, baseURL), { headers: { Cookie: secondCookie } });
+    assert.match(await profileWithStory.text(), new RegExp(detailPath));
+    const privateStory = await fetch(new URL(detailPath, baseURL), { headers: { Cookie: randomUUID() }, redirect: "manual" });
+    assert.notEqual(privateStory.status, 200, "Una sesión ajena no puede consultar un relato privado.");
+
     const updated = await post("update-user", { name: "Ana actualizada" }, firstCookie);
     assert.equal(updated.status, 200, await updated.text());
     const changed = await post("change-password", { currentPassword: originalPassword, newPassword: changedPassword, revokeOtherSessions: true }, firstCookie);

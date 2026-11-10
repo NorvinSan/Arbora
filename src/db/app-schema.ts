@@ -181,7 +181,6 @@ export const familyStory = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     treeId: uuid("tree_id").notNull().references(() => familyTree.id, { onDelete: "cascade" }),
-    personId: uuid("person_id"),
     authorId: text("author_id").references(() => user.id, { onDelete: "set null" }),
     title: text("title").notNull(),
     body: text("body").notNull(),
@@ -189,10 +188,24 @@ export const familyStory = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().$onUpdate(() => new Date()).notNull(),
   },
   (table) => [
-    // Stories about a person are removed with that person; tree-wide stories remain.
-    foreignKey({ columns: [table.treeId, table.personId], foreignColumns: [person.treeId, person.id] }).onDelete("cascade"),
-    index("family_story_tree_person_idx").on(table.treeId, table.personId),
+    unique("family_story_tree_id_id_unique").on(table.treeId, table.id),
+    index("family_story_tree_created_idx").on(table.treeId, table.createdAt),
     check("family_story_title_nonempty", sql`length(btrim(${table.title})) > 0`),
+  ],
+);
+
+export const storyPerson = pgTable(
+  "story_person",
+  {
+    treeId: uuid("tree_id").notNull(),
+    storyId: uuid("story_id").notNull(),
+    personId: uuid("person_id").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.treeId, table.storyId, table.personId] }),
+    foreignKey({ columns: [table.treeId, table.storyId], foreignColumns: [familyStory.treeId, familyStory.id] }).onDelete("cascade"),
+    foreignKey({ columns: [table.treeId, table.personId], foreignColumns: [person.treeId, person.id] }).onDelete("cascade"),
+    index("story_person_tree_person_idx").on(table.treeId, table.personId),
   ],
 );
 
@@ -226,7 +239,7 @@ export const personRelations = relations(person, ({ one, many }) => ({
   partnershipsAsA: many(partnership, { relationName: "partner_a" }),
   partnershipsAsB: many(partnership, { relationName: "partner_b" }),
   events: many(personEvent),
-  stories: many(familyStory),
+  storyPeople: many(storyPerson),
 }));
 
 export const parentChildRelations = relations(parentChild, ({ one }) => ({
@@ -245,10 +258,15 @@ export const personEventRelations = relations(personEvent, ({ one }) => ({
   person: one(person, { fields: [personEvent.personId], references: [person.id] }),
 }));
 
-export const familyStoryRelations = relations(familyStory, ({ one }) => ({
+export const familyStoryRelations = relations(familyStory, ({ one, many }) => ({
   tree: one(familyTree, { fields: [familyStory.treeId], references: [familyTree.id] }),
-  person: one(person, { fields: [familyStory.personId], references: [person.id] }),
   author: one(user, { fields: [familyStory.authorId], references: [user.id] }),
+  participants: many(storyPerson),
+}));
+
+export const storyPersonRelations = relations(storyPerson, ({ one }) => ({
+  story: one(familyStory, { fields: [storyPerson.storyId], references: [familyStory.id] }),
+  person: one(person, { fields: [storyPerson.personId], references: [person.id] }),
 }));
 
 export const treeCollaboratorRelations = relations(treeCollaborator, ({ one }) => ({

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, GitBranch, UsersRound } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BookOpen, GitBranch, UsersRound } from "lucide-react";
 import { notFound } from "next/navigation";
 import { AddPersonForm } from "@/components/add-person-form";
 import { FamilyTreeCanvas } from "@/components/family-tree-canvas";
@@ -7,6 +7,7 @@ import { ParentChildForm } from "@/components/parent-child-form";
 import { PartnershipForm } from "@/components/partnership-form";
 import { requireSession } from "@/lib/session";
 import { getAccessibleTreeGraph } from "@/lib/tree-graph-data";
+import { getAccessibleStories } from "@/lib/family-stories";
 import { getAccessibleTree } from "@/lib/trees";
 
 export default async function TreePage({ params }: { params: Promise<{ treeId: string }> }) {
@@ -20,6 +21,8 @@ export default async function TreePage({ params }: { params: Promise<{ treeId: s
   const graph = await getAccessibleTreeGraph(user.id, tree.id);
   if (!graph) notFound();
   const { people } = graph;
+  const stories = await getAccessibleStories(user.id, tree.id);
+  if (!stories) notFound();
 
   return (
     <div className="space-y-8 lg:space-y-10">
@@ -61,6 +64,11 @@ export default async function TreePage({ params }: { params: Promise<{ treeId: s
         </aside>
       ) : <aside className="soft-panel p-6 text-sm leading-6 text-[#607266]">Tienes acceso de lectura a este árbol. Puedes explorar las personas y sus vínculos familiares.</aside>}
       </div>
+      <section aria-label="Historias familiares" className="space-y-5">
+        <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="eyebrow mb-2 inline-flex items-center gap-2"><BookOpen className="size-4" /> Memoria compartida</p><h2 className="section-title">Historias familiares</h2></div><Link className="text-link text-sm" href={`/dashboard/trees/${tree.id}/stories`}>Ver todas las historias →</Link></div>
+        {stories.length === 0 ? <p className="soft-panel border-dashed p-6 text-sm text-[#718274]">Aún no hay relatos en este árbol. <Link className="text-link" href={`/dashboard/trees/${tree.id}/stories`}>Explorar historias familiares</Link></p> :
+          <ul className="grid gap-4 sm:grid-cols-2">{stories.slice(0, 4).map((story) => <li key={story.id} className="soft-panel p-5"><Link className="text-link font-heading text-xl" href={`/dashboard/trees/${tree.id}/stories/${story.id}`}>{story.title}</Link><p className="mt-2 text-xs text-[#718274]">{story.participants.length ? story.participants.map((person) => person.displayName).join(", ") : "Relato general"}</p></li>)}</ul>}
+      </section>
     </div>
   );
 }

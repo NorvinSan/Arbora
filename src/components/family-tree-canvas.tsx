@@ -43,10 +43,12 @@ function Canvas({ treeId, data }: { treeId: string; data: FamilyGraphData }) {
 
   useEffect(() => {
     let active = true;
+    // React retains this component after a refresh; discard stale nodes if the
+    // new layout fails rather than leaving the previous tree visible.
     layoutFamilyGraph(data).then((result) => {
       if (active) { setGraph(result); setError(false); }
     }).catch(() => {
-      if (active) setError(true);
+      if (active) { setGraph(null); setError(true); }
     });
     return () => { active = false; };
   }, [data]);
@@ -67,6 +69,7 @@ function Canvas({ treeId, data }: { treeId: string; data: FamilyGraphData }) {
         </Button>
       </div>
       {error && <p role="alert" className="p-4 text-sm text-red-700">No se pudo organizar el árbol. Actualiza la página para intentarlo de nuevo.</p>}
+      {!graph && !error && <p role="status" className="p-4 text-sm text-[#607266]">Organizando el árbol…</p>}
       <div className="h-[480px] w-full sm:h-[600px]">
         <ReactFlow<FamilyNode, Edge>
           nodes={graph?.nodes ?? []}
@@ -74,6 +77,14 @@ function Canvas({ treeId, data }: { treeId: string; data: FamilyGraphData }) {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodeClick={(_, node) => router.push(`/dashboard/trees/${treeId}/people/${node.id}`)}
+          onKeyDown={(event) => {
+            const id = (event.target as HTMLElement).closest<HTMLElement>(".react-flow__node[data-id]")?.dataset.id;
+            if (!id) return;
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              router.push(`/dashboard/trees/${treeId}/people/${id}`);
+            }
+          }}
           nodesDraggable={false}
           nodesConnectable={false}
           edgesFocusable={false}
