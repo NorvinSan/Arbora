@@ -1,11 +1,13 @@
+import "server-only";
+
 import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/db";
 import { familyStory, familyTree, person, storyPerson, treeCollaborator } from "@/db/app-schema";
 import { withWritableTree } from "@/lib/tree-write";
 import type { z } from "zod";
 import type { storySchema, updateStorySchema, deleteStorySchema, storyParticipantSchema } from "@/lib/story-form-schemas";
+import type { ActionResult } from "@/lib/action-result";
 
-type Result = { ok: true } | { ok: false; message: string };
 type Create = z.output<typeof storySchema>;
 type Update = z.output<typeof updateStorySchema>;
 type Delete = z.output<typeof deleteStorySchema>;
@@ -18,7 +20,7 @@ async function participantsBelongToTree(tx: Parameters<Parameters<typeof db.tran
   return found.length === ids.length;
 }
 
-export async function createFamilyStory(userId: string, input: Create): Promise<Result> {
+export async function createFamilyStory(userId: string, input: Create): Promise<ActionResult> {
   return withWritableTree(userId, input.treeId, async (tx) => {
     if (!await participantsBelongToTree(tx, input.treeId, input.personIds))
       return { ok: false, message: "Todos los participantes deben pertenecer a este árbol." };
@@ -30,7 +32,7 @@ export async function createFamilyStory(userId: string, input: Create): Promise<
   });
 }
 
-export async function updateFamilyStory(userId: string, input: Update): Promise<Result> {
+export async function updateFamilyStory(userId: string, input: Update): Promise<ActionResult> {
   return withWritableTree(userId, input.treeId, async (tx) => {
     if (!await participantsBelongToTree(tx, input.treeId, input.personIds))
       return { ok: false, message: "Todos los participantes deben pertenecer a este árbol." };
@@ -44,7 +46,7 @@ export async function updateFamilyStory(userId: string, input: Update): Promise<
   });
 }
 
-export async function deleteFamilyStory(userId: string, input: Delete): Promise<Result> {
+export async function deleteFamilyStory(userId: string, input: Delete): Promise<ActionResult> {
   return withWritableTree(userId, input.treeId, async (tx) => {
     const deleted = await tx.delete(familyStory).where(and(eq(familyStory.treeId, input.treeId), eq(familyStory.id, input.storyId)))
       .returning({ id: familyStory.id });
@@ -52,7 +54,7 @@ export async function deleteFamilyStory(userId: string, input: Delete): Promise<
   });
 }
 
-export async function addStoryParticipant(userId: string, input: Participant): Promise<Result> {
+export async function addStoryParticipant(userId: string, input: Participant): Promise<ActionResult> {
   return withWritableTree(userId, input.treeId, async (tx) => {
     const [story] = await tx.select({ id: familyStory.id }).from(familyStory)
       .where(and(eq(familyStory.treeId, input.treeId), eq(familyStory.id, input.storyId))).limit(1);
@@ -64,7 +66,7 @@ export async function addStoryParticipant(userId: string, input: Participant): P
   });
 }
 
-export async function removeStoryParticipant(userId: string, input: Participant): Promise<Result> {
+export async function removeStoryParticipant(userId: string, input: Participant): Promise<ActionResult> {
   return withWritableTree(userId, input.treeId, async (tx) => {
     const [story] = await tx.select({ id: familyStory.id }).from(familyStory)
       .where(and(eq(familyStory.treeId, input.treeId), eq(familyStory.id, input.storyId))).limit(1);

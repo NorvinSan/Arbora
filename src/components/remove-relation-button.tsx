@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { deleteParentChildAction } from "@/lib/relation-actions";
 
 export function RemoveRelationButton({ treeId, parentId, childId }: { treeId: string; parentId: string; childId: string }) {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -16,7 +14,6 @@ export function RemoveRelationButton({ treeId, parentId, childId }: { treeId: st
     try {
       const result = await deleteParentChildAction({ treeId, parentId, childId });
       if (!result.ok) setError(result.message);
-      else router.refresh();
     } catch {
       setError("No se pudo conectar con el servidor. Inténtalo de nuevo.");
     } finally {

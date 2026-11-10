@@ -1,13 +1,15 @@
+import "server-only";
+
 import { sql } from "drizzle-orm";
 import type { z } from "zod";
 import type { createParentChildSchema, deleteParentChildSchema } from "@/lib/tree-form-schemas";
 import { withWritableTree } from "@/lib/tree-write";
+import type { ActionResult } from "@/lib/action-result";
 
 type Relation = z.output<typeof deleteParentChildSchema>;
 type CreateRelation = z.output<typeof createParentChildSchema>;
-type Result = { ok: true } | { ok: false; message: string };
 
-export async function createParentChild(userId: string, { treeId, parentId, childId, relationType }: CreateRelation): Promise<Result> {
+export async function createParentChild(userId: string, { treeId, parentId, childId, relationType }: CreateRelation): Promise<ActionResult> {
   if (parentId === childId) return { ok: false, message: "Una persona no puede ser su propio progenitor." };
 
   return withWritableTree(userId, treeId, async (tx) => {
@@ -42,7 +44,7 @@ export async function createParentChild(userId: string, { treeId, parentId, chil
   });
 }
 
-export async function deleteParentChild(userId: string, { treeId, parentId, childId }: Relation): Promise<Result> {
+export async function deleteParentChild(userId: string, { treeId, parentId, childId }: Relation): Promise<ActionResult> {
   return withWritableTree(userId, treeId, async (tx) => {
     const deleted = await tx.execute(sql`
       delete from parent_child where tree_id = ${treeId}

@@ -21,12 +21,14 @@ test("cuentas, sesiones y aislamiento de árboles con PostgreSQL real", { timeou
   const changedPassword = `new-${randomUUID()}`;
   const treeId = randomUUID();
   const treeName = `Arbora integration ${suffix}`;
+  const testIp = `100.64.${parseInt(suffix.slice(0, 2), 16)}.${parseInt(suffix.slice(2, 4), 16)}`;
+  const limiterIp = `100.65.${parseInt(suffix.slice(0, 2), 16)}.${parseInt(suffix.slice(2, 4), 16)}`;
   const pool = new Pool({ connectionString: databaseUrl });
 
-  async function post(path: string, body: object, cookie?: string) {
+  async function post(path: string, body: object, cookie?: string, ip = testIp) {
     return fetch(new URL(`/api/auth/${path}`, origin), {
       method: "POST",
-      headers: { "Content-Type": "application/json", Origin: origin, ...(cookie ? { Cookie: cookie } : {}) },
+      headers: { "Content-Type": "application/json", Origin: origin, "X-Forwarded-For": ip, "User-Agent": "ArboraIntegration/1.0", ...(cookie ? { Cookie: cookie } : {}) },
       body: JSON.stringify(body),
       redirect: "manual",
     });
@@ -49,10 +51,14 @@ test("cuentas, sesiones y aislamiento de árboles con PostgreSQL real", { timeou
 
     const duplicate = await post("sign-up/email", { name: "Duplicado", email: firstEmail, password: originalPassword });
     assert.equal(duplicate.status, 422, "No se deben registrar dos usuarios con el mismo correo.");
+    const blockedRegistration = await post("sign-up/email", { name: "Cuarto intento", email: `blocked-${suffix}@example.invalid`, password: originalPassword });
+    assert.equal(blockedRegistration.status, 429, "El registro por HTTP debe tener límite de intentos.");
 
     const firstSession = await fetch(new URL("/api/auth/get-session", baseURL), { headers: { Cookie: firstCookie } });
     const sessionData = await firstSession.json();
     assert.equal(sessionData.user.email, firstEmail);
+    assert.equal(sessionData.session.ipAddress, testIp);
+    assert.equal(sessionData.session.userAgent, "ArboraIntegration/1.0");
     await pool.query("INSERT INTO family_tree (id, owner_id, name) VALUES ($1, $2, $3)", [treeId, sessionData.user.id, treeName]);
 
     const firstDashboard = await fetch(new URL("/dashboard", baseURL), { headers: { Cookie: firstCookie } });
@@ -132,6 +138,11 @@ test("cuentas, sesiones y aislamiento de árboles con PostgreSQL real", { timeou
     const newLogin = await post("sign-in/email", { email: firstEmail, password: changedPassword });
     assert.equal(newLogin.status, 200, await newLogin.text());
     assert.ok(sessionCookie(newLogin));
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const response = await post("sign-in/email", { email: firstEmail, password: "contraseña incorrecta" }, undefined, limiterIp);
+      assert.equal(response.status, attempt === 3 ? 429 : 401, `Intento ${attempt + 1}: ${await response.text()}`);
+    }
   } finally {
     await pool.query("DELETE FROM family_tree WHERE id = $1", [treeId]);
     await pool.query('DELETE FROM "user" WHERE email = ANY($1::text[])', [[firstEmail, secondEmail]]);

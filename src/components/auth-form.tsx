@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
-import { loginAction, registerAction } from "@/lib/auth-actions";
+import { authClient } from "@/lib/auth-client";
+import { authErrorMessage } from "@/lib/auth-errors";
 import { loginSchema, registerSchema } from "@/lib/form-schemas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,8 +50,8 @@ function RegisterForm() {
   const submit = handleSubmit(async (values) => {
     setServerError("");
     try {
-      const result = await registerAction(values);
-      if (!result.ok) return setServerError(result.message);
+      const { error } = await authClient.signUp.email(values);
+      if (error) return setServerError(authErrorMessage({ code: error.code, status: error.status }, "register"));
       router.replace("/dashboard");
       router.refresh();
     } catch {
@@ -82,8 +83,8 @@ function LoginForm() {
   const submit = handleSubmit(async (values) => {
     setServerError("");
     try {
-      const result = await loginAction(values);
-      if (!result.ok) return setServerError(result.message);
+      const { error } = await authClient.signIn.email(values);
+      if (error) return setServerError(authErrorMessage({ code: error.code, status: error.status }, "login"));
       router.replace("/dashboard");
       router.refresh();
     } catch {

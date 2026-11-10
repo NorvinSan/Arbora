@@ -33,7 +33,6 @@ export function StoryForm({ treeId, people, story }: {
       if (!result.ok) return setError(result.message);
       if (!story) reset();
       setSuccess(story ? "Relato actualizado." : "Relato registrado.");
-      router.refresh();
     } catch { setError("No se pudo conectar con el servidor. Inténtalo de nuevo."); }
   });
 
@@ -44,7 +43,6 @@ export function StoryForm({ treeId, people, story }: {
       const result = await deleteStoryAction({ treeId, storyId: story.id });
       if (!result.ok) return setError(result.message);
       router.push(`/dashboard/trees/${treeId}/stories`);
-      router.refresh();
     } catch { setError("No se pudo eliminar el relato. Inténtalo de nuevo."); }
     finally { setIsDeleting(false); }
   };

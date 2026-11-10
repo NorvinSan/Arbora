@@ -29,12 +29,15 @@ test("acontecimientos: CRUD, fechas parciales, orden, aislamiento, roles e integ
     assert.deepEqual(await createPersonEvent(owner, data), { ok: true });
     assert.deepEqual(await createPersonEvent(editor, { ...data, title: "Sin fecha", date: "" }), { ok: true });
     assert.deepEqual(await createPersonEvent(owner, { ...data, title: "Mes y año", date: "1989-05" }), { ok: true });
+    assert.deepEqual(await createPersonEvent(owner, { ...data, type: "birth", title: "Nacimiento" }), { ok: true });
     let events = await getPersonEvents(treeId, personId);
-    assert.deepEqual(events.map((event) => event.title), ["Mes y año", "Un recuerdo", "Sin fecha"]);
+    assert.deepEqual(events.map((event) => event.title), ["Mes y año", "Un recuerdo", "Nacimiento", "Sin fecha"]);
     assert.deepEqual([events[0].year, events[0].month, events[0].day], [1989, 5, null]);
-    assert.equal(events[2].qualifier, null);
+    assert.equal(events[3].qualifier, null);
     assert.deepEqual(await getPersonEvents(treeId, siblingId), []);
     const eventId = events[1].id;
+    const { postgresErrorCode } = await import("../../src/lib/action-result");
+    await assert.rejects(updatePersonEvent(editor, { ...data, eventId, type: "birth" }), (error: unknown) => postgresErrorCode(error) === "23505");
     assert.equal((await updatePersonEvent(viewer, { ...data, eventId })).ok, false);
     assert.equal((await deletePersonEvent(viewer, { treeId, personId, eventId })).ok, false);
     assert.equal((await updatePersonEvent(editor, { ...data, personId: siblingId, eventId })).ok, false);
@@ -43,7 +46,7 @@ test("acontecimientos: CRUD, fechas parciales, orden, aislamiento, roles e integ
     events = await getPersonEvents(treeId, personId);
     assert.equal(events.find((event) => event.id === eventId)?.title, "Trabajo");
     assert.deepEqual(await deletePersonEvent(owner, { treeId, personId, eventId }), { ok: true });
-    assert.equal((await getPersonEvents(treeId, personId)).length, 2);
+    assert.equal((await getPersonEvents(treeId, personId)).length, 3);
     assert.equal((await pool.query("select count(*)::int as count from person where tree_id = $1", [treeId])).rows[0].count, 2);
     assert.equal((await pool.query("select count(*)::int as count from parent_child where tree_id = $1", [treeId])).rows[0].count, 1);
     assert.equal((await pool.query("select count(*)::int as count from partnership where tree_id = $1", [treeId])).rows[0].count, 1);

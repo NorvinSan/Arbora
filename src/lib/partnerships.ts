@@ -1,25 +1,22 @@
+import "server-only";
+
 import { sql } from "drizzle-orm";
 import type { z } from "zod";
 import type { createPartnershipSchema, deletePartnershipSchema } from "@/lib/tree-form-schemas";
 import { withWritableTree } from "@/lib/tree-write";
+import { historicalDateParts } from "@/lib/historical-date";
+import type { ActionResult } from "@/lib/action-result";
 
 type Create = z.output<typeof createPartnershipSchema>;
 type Delete = z.output<typeof deletePartnershipSchema>;
-type Result = { ok: true } | { ok: false; message: string };
 
-function dateParts(value: string) {
-  if (!value) return { year: null, month: null, day: null, qualifier: null };
-  const [year, month, day] = value.split("-").map(Number);
-  return { year, month, day, qualifier: "exact" };
-}
-
-export async function createPartnership(userId: string, input: Create): Promise<Result> {
+export async function createPartnership(userId: string, input: Create): Promise<ActionResult> {
   const { treeId, kind } = input;
   if (input.personAId === input.personBId) return { ok: false, message: "Una persona no puede ser su propia pareja." };
   if (input.startDate && input.endDate && input.endDate < input.startDate) return { ok: false, message: "La fecha de fin no puede ser anterior a la de inicio." };
   const [personAId, personBId] = [input.personAId, input.personBId].sort();
-  const start = dateParts(input.startDate);
-  const end = dateParts(input.endDate);
+  const start = historicalDateParts(input.startDate, "exact");
+  const end = historicalDateParts(input.endDate, "exact");
 
   return withWritableTree(userId, treeId, async (tx) => {
     const people = await tx.execute(sql`select id from person where tree_id = ${treeId} and id in (${personAId}, ${personBId})`);
@@ -42,7 +39,7 @@ export async function createPartnership(userId: string, input: Create): Promise<
   });
 }
 
-export async function deletePartnership(userId: string, { treeId, partnershipId }: Delete): Promise<{ ok: true; personAId: string; personBId: string } | { ok: false; message: string }> {
+export async function deletePartnership(userId: string, { treeId, partnershipId }: Delete): Promise<ActionResult<{ personAId: string; personBId: string }>> {
   return withWritableTree<{ ok: true; personAId: string; personBId: string }>(userId, treeId, async (tx) => {
     const deleted = await tx.execute<{ person_a_id: string; person_b_id: string }>(sql`
       delete from partnership where tree_id = ${treeId} and id = ${partnershipId} returning person_a_id, person_b_id

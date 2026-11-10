@@ -1,7 +1,10 @@
+import "server-only";
+
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
+import type { ActionResult } from "@/lib/action-result";
 
-type Failure = { ok: false; message: string };
+type Failure = Extract<ActionResult, { ok: false }>;
 
 // Serializing writes per tree also prevents concurrent parent/child cycle checks.
 export async function withWritableTree<T extends { ok: true }>(userId: string, treeId: string, work: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T | Failure>): Promise<T | Failure> {

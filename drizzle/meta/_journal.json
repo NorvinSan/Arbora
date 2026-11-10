@@ -36,6 +36,13 @@
       "when": 1794268985438,
       "tag": "0004_zippy_energizer",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794270517188,
+      "tag": "0005_parallel_whirlwind",
+      "breakpoints": true
     }
   ]
 }

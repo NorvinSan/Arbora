@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
@@ -13,7 +12,6 @@ import { addPersonAction } from "@/lib/tree-actions";
 import { addPersonSchema } from "@/lib/tree-form-schemas";
 
 export function AddPersonForm({ treeId }: { treeId: string }) {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<z.input<typeof addPersonSchema>, unknown, z.output<typeof addPersonSchema>>({
@@ -29,7 +27,6 @@ export function AddPersonForm({ treeId }: { treeId: string }) {
       if (!result.ok) return setError(result.message);
       reset();
       setSuccess("Persona agregada al árbol.");
-      router.refresh();
     } catch {
       setError("No se pudo conectar con el servidor. Inténtalo de nuevo.");
     }

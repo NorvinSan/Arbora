@@ -2,6 +2,7 @@ type AuthError = { code?: string; status?: number } | null;
 
 export function authErrorMessage(error: AuthError, context: "register" | "login" | "profile" | "password" | "logout") {
   if (error?.status === 503) return "La autenticación no está configurada o no está disponible. Inténtalo más tarde.";
+  if (error?.status === 429) return "Demasiados intentos. Espera un momento antes de volver a intentarlo.";
 
   switch (error?.code) {
     case "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL":

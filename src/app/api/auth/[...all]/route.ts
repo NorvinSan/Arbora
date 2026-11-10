@@ -1,9 +1,10 @@
 import { toNextJsHandler } from "better-auth/next-js";
+import { isAuthConfigured } from "@/lib/auth-config";
 
 export const runtime = "nodejs";
 
 async function handler(request: Request) {
-  if (!process.env.DATABASE_URL || !process.env.BETTER_AUTH_SECRET || !process.env.BETTER_AUTH_URL) {
+  if (!isAuthConfigured()) {
     return Response.json({ error: "Autenticación sin configurar en el servidor." }, { status: 503 });
   }
 

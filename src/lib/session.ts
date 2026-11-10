@@ -3,9 +3,10 @@ import "server-only";
 import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { isAuthConfigured } from "@/lib/auth-config";
 
 export const getCurrentSession = cache(async () => {
-  if (!process.env.DATABASE_URL || !process.env.BETTER_AUTH_SECRET || !process.env.BETTER_AUTH_URL) {
+  if (!isAuthConfigured()) {
     return null;
   }
 

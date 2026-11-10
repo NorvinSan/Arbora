@@ -14,13 +14,6 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const labels = { biological: "Biológico", adoptive: "Adoptivo", other: "No especificado" };
 const partnershipLabels = { marriage: "Matrimonio", union: "Unión", partnership: "Pareja" };
 
-function formatPartialDate(year: number | null, month: number | null, day: number | null, qualifier: string | null) {
-  if (year === null) return null;
-  const date = [day, month].filter((part) => part !== null).map((part) => String(part).padStart(2, "0")).concat(String(year).padStart(4, "0")).join("/");
-  const prefix = { approximate: "Aprox. ", before: "Antes de ", after: "Después de ", exact: "" }[qualifier ?? "exact"] ?? "";
-  return `${prefix}${date}`;
-}
-
 export default async function PersonPage({ params }: { params: Promise<{ treeId: string; personId: string }> }) {
   const { user } = await requireSession();
   const { treeId, personId } = await params;
@@ -103,8 +96,8 @@ export default async function PersonPage({ params }: { params: Promise<{ treeId:
                     <p className="mt-1 text-sm text-[#667a6a]">{partnershipLabels[partner.kind]}</p>
                   </div>
                 </div>
-                <p className="text-sm text-[#667a6a]">Inicio: {formatPartialDate(partner.startYear, partner.startMonth, partner.startDay, partner.startQualifier) ?? "Sin fecha de inicio"}</p>
-                <p className="text-sm text-[#667a6a]">Fin: {formatPartialDate(partner.endYear, partner.endMonth, partner.endDay, partner.endQualifier) ?? "Sin fecha de fin"}</p>
+                <p className="text-sm text-[#667a6a]">Inicio: {partner.startYear === null ? "Sin fecha de inicio" : formatEventDate(partner.startYear, partner.startMonth, partner.startDay, partner.startQualifier)}</p>
+                <p className="text-sm text-[#667a6a]">Fin: {partner.endYear === null ? "Sin fecha de fin" : formatEventDate(partner.endYear, partner.endMonth, partner.endDay, partner.endQualifier)}</p>
                 {canEdit && <div className="border-t border-[#e8eee5] pt-3"><RemovePartnershipButton treeId={treeId} partnershipId={partner.partnershipId} /></div>}
               </li>
             ))}

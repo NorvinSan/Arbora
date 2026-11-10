@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
@@ -18,7 +17,6 @@ type Event = {
 };
 
 export function EventForm({ treeId, personId, event }: { treeId: string; personId: string; event?: Event }) {
-  const router = useRouter();
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -39,7 +37,6 @@ export function EventForm({ treeId, personId, event }: { treeId: string; personI
       if (!result.ok) return setMessage(result.message);
       if (!event) reset();
       setSuccess(event ? "Acontecimiento actualizado." : "Acontecimiento registrado.");
-      router.refresh();
     } catch { setMessage("No se pudo conectar con el servidor. Inténtalo de nuevo."); }
   });
   const remove = async () => {
@@ -48,7 +45,6 @@ export function EventForm({ treeId, personId, event }: { treeId: string; personI
     try {
       const result = await deleteEventAction({ treeId, personId, eventId: event!.id });
       if (!result.ok) return setMessage(result.message);
-      router.refresh();
     } catch { setMessage("No se pudo eliminar el acontecimiento. Inténtalo de nuevo."); }
     finally { setIsDeleting(false); }
   };

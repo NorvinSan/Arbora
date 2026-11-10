@@ -26,7 +26,6 @@ export function CreateTreeForm() {
       const result = await createTreeAction(values);
       if (!result.ok) return setError(result.message);
       router.push(`/dashboard/trees/${result.id}`);
-      router.refresh();
     } catch {
       setError("No se pudo conectar con el servidor. Inténtalo de nuevo.");
     }

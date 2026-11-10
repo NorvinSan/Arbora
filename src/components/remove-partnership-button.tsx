@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { deletePartnershipAction } from "@/lib/relation-actions";
 
 export function RemovePartnershipButton({ treeId, partnershipId }: { treeId: string; partnershipId: string }) {
-  const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -17,7 +15,6 @@ export function RemovePartnershipButton({ treeId, partnershipId }: { treeId: str
     try {
       const result = await deletePartnershipAction({ treeId, partnershipId });
       if (!result.ok) setError(result.message);
-      else router.refresh();
     } catch {
       setError("No se pudo conectar con el servidor. Inténtalo de nuevo.");
     } finally {

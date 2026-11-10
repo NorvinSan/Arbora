@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
@@ -12,7 +11,6 @@ import { createParentChildAction } from "@/lib/relation-actions";
 import { createParentChildSchema } from "@/lib/tree-form-schemas";
 
 export function ParentChildForm({ treeId, people }: { treeId: string; people: { id: string; displayName: string }[] }) {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<z.input<typeof createParentChildSchema>, unknown, z.output<typeof createParentChildSchema>>({
@@ -28,7 +26,6 @@ export function ParentChildForm({ treeId, people }: { treeId: string; people: { 
       if (!result.ok) return setError(result.message);
       reset();
       setSuccess("Parentesco registrado correctamente.");
-      router.refresh();
     } catch {
       setError("No se pudo conectar con el servidor. Inténtalo de nuevo.");
     }
