@@ -88,6 +88,7 @@ test("cuentas, sesiones y aislamiento de árboles con PostgreSQL real", { timeou
     assert.equal(viewerTree.status, 200);
     const viewerBody = await viewerTree.text();
     assert.match(viewerBody, /Árbol interactivo/);
+    assert.match(viewerBody, /Buscar familiares en este árbol/);
     assert.match(viewerBody, /Tienes acceso de lectura a este árbol/);
     assert.doesNotMatch(viewerBody, /Registrar pareja/, "Un lector no debe ver formularios de edición.");
 
@@ -96,6 +97,8 @@ test("cuentas, sesiones y aislamiento de árboles con PostgreSQL real", { timeou
     assert.equal(viewerProfile.status, 200);
     const viewerProfileBody = await viewerProfile.text();
     assert.match(viewerProfileBody, /Historia de vida/);
+    assert.match(viewerProfileBody, /Ver ascendientes/);
+    assert.match(viewerProfileBody, new RegExp(`/dashboard/trees/${treeId}\\?person=${personId}`));
     assert.match(viewerProfileBody, /Graduación de prueba/);
     assert.match(viewerProfileBody, /Sevilla/);
     assert.doesNotMatch(viewerProfileBody, /Agregar acontecimiento/);

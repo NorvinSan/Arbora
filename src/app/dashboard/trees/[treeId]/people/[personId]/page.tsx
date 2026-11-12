@@ -9,12 +9,13 @@ import { getPersonEvents } from "@/lib/person-events";
 import { getAccessibleStories } from "@/lib/family-stories";
 import { requireSession } from "@/lib/session";
 import { getAccessiblePerson, getAccessibleTree, getFamilyRelations } from "@/lib/trees";
+import { MAX_GENERATIONS } from "@/lib/tree-exploration-options";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const labels = { biological: "Biológico", adoptive: "Adoptivo", other: "No especificado" };
 const partnershipLabels = { marriage: "Matrimonio", union: "Unión", partnership: "Pareja" };
 
-export default async function PersonPage({ params }: { params: Promise<{ treeId: string; personId: string }> }) {
+export default async function PersonPage({ params, searchParams }: { params: Promise<{ treeId: string; personId: string }>; searchParams: Promise<{ focus?: string; mode?: string; generations?: string }> }) {
   const { user } = await requireSession();
   const { treeId, personId } = await params;
   if (!uuid.test(treeId) || !uuid.test(personId)) notFound();
@@ -26,10 +27,17 @@ export default async function PersonPage({ params }: { params: Promise<{ treeId:
   const [{ parents, children, partners }, events, stories] = await Promise.all([getFamilyRelations(treeId, personId), getPersonEvents(treeId, personId), getAccessibleStories(user.id, treeId, { personId })]);
   if (!stories) notFound();
   const canEdit = tree.ownerId === user.id || tree.collaboratorRole === "editor";
+  const context = await searchParams;
+  const savedFocus = context.focus && uuid.test(context.focus) ? context.focus : personId;
+  const generationCount = Number(context.generations);
+  const generations = Number.isInteger(generationCount) && generationCount >= 1 && generationCount <= MAX_GENERATIONS ? generationCount : 4;
+  const mode = context.mode === "ancestors" || context.mode === "descendants" ? context.mode : null;
+  const treeUrl = (focus: string, branch: string | null = null) => `/dashboard/trees/${treeId}?person=${focus}&generations=${generations}${branch ? `&mode=${branch}` : ""}`;
+  const profileContext = `?focus=${savedFocus}&generations=${generations}${mode ? `&mode=${mode}` : ""}`;
 
   return (
     <div className="space-y-8 lg:space-y-10">
-      <Link href={`/dashboard/trees/${treeId}`} className="text-link inline-flex items-center gap-2 text-sm"><ArrowLeft className="size-4" /> {tree.name}</Link>
+      <Link href={treeUrl(savedFocus, mode)} className="text-link inline-flex items-center gap-2 text-sm"><ArrowLeft className="size-4" /> {tree.name}</Link>
       <header className="flex flex-wrap items-center gap-5 border-b border-[#dce7d9] pb-8 sm:gap-7">
         <span aria-hidden="true" className="flex size-20 shrink-0 items-center justify-center rounded-2xl bg-[#e5f0e1] font-heading text-4xl text-[#356747] sm:size-24">{member.displayName.charAt(0).toLocaleUpperCase("es")}</span>
         <div><p className="eyebrow mb-2 inline-flex items-center gap-2"><GitBranch className="size-4" /> Perfil familiar</p><h1 className="page-title">{member.displayName}</h1>
@@ -39,6 +47,11 @@ export default async function PersonPage({ params }: { params: Promise<{ treeId:
         </p>
         {member.biography && <p className="mt-3 max-w-2xl whitespace-pre-wrap leading-7 text-[#516655]">{member.biography}</p>}</div>
       </header>
+      <div className="flex flex-wrap gap-3 text-sm">
+        <Link className="text-link" href={treeUrl(personId)}>Ver en el árbol →</Link>
+        <Link className="text-link" href={treeUrl(personId, "ancestors")}>Ver ascendientes →</Link>
+        <Link className="text-link" href={treeUrl(personId, "descendants")}>Ver descendientes →</Link>
+      </div>
       <section aria-label="Historia de vida" className="space-y-6">
         <div><p className="eyebrow mb-2">Recuerdos y momentos</p><h2 className="section-title">Historia de vida</h2></div>
         {events.length === 0 ? <p className="soft-panel border-dashed p-6 text-sm text-[#718274]">Todavía no hay acontecimientos registrados para esta persona.</p> : (
@@ -68,11 +81,11 @@ export default async function PersonPage({ params }: { params: Promise<{ treeId:
         ] as const).map(({ title, relatives, isParent }) => (
           <div key={title} className="soft-panel space-y-5 p-5 sm:p-6">
             <div className="flex items-center justify-between gap-3"><h3 className="font-heading text-xl font-semibold text-[#193d2b]">{title}</h3><span className="rounded-full bg-[#edf4e9] px-2.5 py-1 text-xs font-semibold text-[#4d7955]">{relatives.length}</span></div>
-            {relatives.length === 0 ? <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#dce8d8] bg-[#fbfcf9] p-5 text-sm text-[#718274]"><UsersRound className="size-5 shrink-0" /> No hay vínculos registrados.</div> : (
+             {relatives.length === 0 ? <div className="flex items-center gap-3 rounded-xl border border-dashed border-[#dce8d8] bg-[#fbfcf9] p-5 text-sm text-[#718274]"><UsersRound className="size-5 shrink-0" /> No hay {isParent ? "ascendientes" : "descendientes"} registrados.</div> : (
               <ul className="space-y-3">
                 {relatives.map((relative) => (
                   <li key={relative.id} className="rounded-xl border border-[#e1e9de] bg-[#fcfdfb] p-4">
-                    <div className="flex items-center gap-3"><span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e8f1e4] font-heading text-lg text-[#356747]">{relative.displayName.charAt(0).toLocaleUpperCase("es")}</span><div className="min-w-0 flex-1"><Link href={`/dashboard/trees/${treeId}/people/${relative.id}`} className="text-link inline-flex max-w-full items-center gap-1 text-sm"><span className="truncate">{relative.displayName}</span><ArrowUpRight className="size-3.5 shrink-0" /></Link><p className="mt-1 text-xs text-[#738675]">{labels[relative.relationType]}</p></div></div>
+                     <div className="flex items-center gap-3"><span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e8f1e4] font-heading text-lg text-[#356747]">{relative.displayName.charAt(0).toLocaleUpperCase("es")}</span><div className="min-w-0 flex-1"><Link href={`/dashboard/trees/${treeId}/people/${relative.id}${profileContext}`} className="text-link inline-flex max-w-full items-center gap-1 text-sm"><span className="truncate">{relative.displayName}</span><ArrowUpRight className="size-3.5 shrink-0" /></Link><p className="mt-1 text-xs text-[#738675]">{labels[relative.relationType]} · <Link className="text-link" href={treeUrl(relative.id)}>Ver en árbol</Link></p></div></div>
                     {canEdit && <div className="mt-3 border-t border-[#e8eee5] pt-3"><RemoveRelationButton treeId={treeId} parentId={isParent ? relative.id : personId} childId={isParent ? personId : relative.id} /></div>}
                   </li>
                 ))}
@@ -92,8 +105,9 @@ export default async function PersonPage({ params }: { params: Promise<{ treeId:
               <li key={partner.partnershipId} className="soft-panel space-y-3 p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <Link href={`/dashboard/trees/${treeId}/people/${partner.id}`} className="text-link inline-flex max-w-full items-center gap-1 font-semibold"><span className="truncate">{partner.displayName}</span><ArrowUpRight className="size-4 shrink-0" /></Link>
-                    <p className="mt-1 text-sm text-[#667a6a]">{partnershipLabels[partner.kind]}</p>
+                     <Link href={`/dashboard/trees/${treeId}/people/${partner.id}${profileContext}`} className="text-link inline-flex max-w-full items-center gap-1 font-semibold"><span className="truncate">{partner.displayName}</span><ArrowUpRight className="size-4 shrink-0" /></Link>
+                     <p className="mt-1 text-sm text-[#667a6a]">{partnershipLabels[partner.kind]}</p>
+                     <Link className="text-link text-xs" href={treeUrl(partner.id)}>Ver en árbol</Link>
                   </div>
                 </div>
                 <p className="text-sm text-[#667a6a]">Inicio: {partner.startYear === null ? "Sin fecha de inicio" : formatEventDate(partner.startYear, partner.startMonth, partner.startDay, partner.startQualifier)}</p>

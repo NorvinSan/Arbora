@@ -3,11 +3,11 @@ import ELK from "elkjs/lib/elk.bundled.js";
 
 export type FamilyGraphData = {
   people: { id: string; displayName: string; lifeStatus: "living" | "deceased" | "unknown"; whereaboutsStatus: "known" | "missing" | "unknown" }[];
-  parents: { parentId: string; childId: string }[];
+  parents: { parentId: string; childId: string; relationType?: "biological" | "adoptive" | "other" }[];
   partners: { personAId: string; personBId: string }[];
 };
 
-export type FamilyNode = Node<{ name: string; lifeStatus: FamilyGraphData["people"][number]["lifeStatus"]; whereaboutsStatus: FamilyGraphData["people"][number]["whereaboutsStatus"] }, "person">;
+export type FamilyNode = Node<{ name: string; highlighted?: boolean; lifeStatus: FamilyGraphData["people"][number]["lifeStatus"]; whereaboutsStatus: FamilyGraphData["people"][number]["whereaboutsStatus"] }, "person">;
 
 const NODE_WIDTH = 160;
 const NODE_HEIGHT = 72;
@@ -65,12 +65,12 @@ export function buildFamilyGraph(data: FamilyGraphData) {
   const edges: Edge[] = [];
   const parentPairs = new Set<string>();
   const groupEdges = new Set<string>();
-  for (const { parentId, childId } of data.parents) {
+  for (const { parentId, childId, relationType } of data.parents) {
     if (!people.has(parentId) || !people.has(childId) || parentId === childId) continue;
     const id = `${parentId}:${childId}`;
     if (parentPairs.has(id)) continue;
     parentPairs.add(id);
-    edges.push({ id: `parent:${id}`, source: parentId, target: childId, sourceHandle: "child", targetHandle: "parent", type: "smoothstep", style: { stroke: "#719977", strokeWidth: 2 }, zIndex: 1 });
+    edges.push({ id: `parent:${id}`, source: parentId, target: childId, sourceHandle: "child", targetHandle: "parent", type: "smoothstep", label: relationType === "adoptive" ? "Adopción" : relationType === "other" ? "Otro vínculo" : undefined, style: { stroke: relationType === "adoptive" ? "#6b78a2" : relationType === "other" ? "#9a8450" : "#719977", strokeWidth: 2, strokeDasharray: relationType && relationType !== "biological" ? "5 4" : undefined }, zIndex: 1 });
     const from = root(parentId);
     const to = root(childId);
     if (from !== to) groupEdges.add(`${from}:${to}`);
