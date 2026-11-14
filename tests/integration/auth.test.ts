@@ -133,6 +133,27 @@ test("cuentas, sesiones y aislamiento de árboles con PostgreSQL real", { timeou
     const { deletePhoto } = await import("../../src/lib/person-media");
     assert.equal((await deletePhoto(sessionData.user.id, treeId, photoId)).ok, true);
 
+    const documentForm = new FormData();
+    documentForm.set("kind", "document");
+    documentForm.set("file", new File(["%PDF-1.4\n1 0 obj\n%%EOF\n"], "acta.pdf", { type: "application/pdf" }));
+    documentForm.set("title", "Acta familiar");
+    documentForm.set("documentType", "birth");
+    documentForm.set("description", "Registro de nacimiento");
+    documentForm.set("historicalDate", "1900-01-01");
+    documentForm.append("personId", personId);
+    assert.equal((await fetch(new URL(photoPath, baseURL), { method: "POST", headers: { Cookie: secondCookie }, body: documentForm })).status, 403);
+    const uploadedDocument = await fetch(new URL(photoPath, baseURL), { method: "POST", headers: { Cookie: firstCookie }, body: documentForm });
+    assert.equal(uploadedDocument.status, 201, await uploadedDocument.clone().text());
+    const documentId = (await uploadedDocument.json()).id as string;
+    const documentPath = `${photoPath}/${documentId}`;
+    assert.equal((await fetch(new URL(documentPath, baseURL))).status, 401, "Un enlace público no debe revelar el PDF.");
+    assert.equal((await fetch(new URL(documentPath, baseURL), { headers: { Cookie: secondCookie } })).headers.get("content-type"), "application/pdf");
+    assert.equal((await fetch(new URL(`${documentPath}?download=1`, baseURL), { headers: { Cookie: secondCookie } })).headers.get("content-disposition")?.startsWith("attachment"), true);
+    assert.equal((await fetch(new URL(`/api/trees/${randomUUID()}/media/${documentId}`, baseURL), { headers: { Cookie: secondCookie } })).status, 404);
+    assert.match(await (await fetch(new URL(profilePath, baseURL), { headers: { Cookie: secondCookie } })).text(), /Acta familiar/);
+    const { deleteDocument } = await import("../../src/lib/person-media");
+    assert.equal((await deleteDocument(sessionData.user.id, treeId, documentId)).ok, true);
+
     const story = await pool.query("INSERT INTO family_story (tree_id, author_id, title, body) VALUES ($1, $2, 'Relato de prueba', 'Una historia compartida') RETURNING id", [treeId, sessionData.user.id]);
     const storyId = story.rows[0].id as string;
     await pool.query("INSERT INTO story_person (tree_id, story_id, person_id) VALUES ($1, $2, $3)", [treeId, storyId, personId]);

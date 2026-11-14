@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { MAX_PHOTO_SIZE, validatePhoto } from "../src/lib/media-validation";
+import { MAX_DOCUMENT_SIZE, MAX_PHOTO_SIZE, documentMetadataSchema, validateDocument, validatePhoto } from "../src/lib/media-validation";
 
 test("fotografías: valida formato real, tipo declarado y tamaño", () => {
   const jpeg = Uint8Array.from([255, 216, 255, 0]);
@@ -13,4 +13,19 @@ test("fotografías: valida formato real, tipo declarado y tamaño", () => {
   assert.match(validatePhoto(png, "application/pdf", png.length)!, /Solo se permiten/);
   assert.match(validatePhoto(jpeg, "image/jpeg", MAX_PHOTO_SIZE + 1)!, /10 MB/);
   assert.match(validatePhoto(new Uint8Array(), "image/jpeg", 0)!, /10 MB/);
+});
+
+test("documentos: valida PDF real, MIME, límite y metadatos", () => {
+  const pdf = new TextEncoder().encode("%PDF-1.4\n1 0 obj\n%%EOF\n");
+  assert.equal(validateDocument(pdf, "application/pdf", pdf.length), null);
+  assert.match(validateDocument(pdf, "image/png", pdf.length)!, /PDF/);
+  assert.match(validateDocument(new TextEncoder().encode("%PDF-1.4"), "application/pdf", 8)!, /PDF/);
+  assert.match(validateDocument(pdf, "application/pdf", MAX_DOCUMENT_SIZE + 1)!, /20 MB/);
+  assert.match(validateDocument(new Uint8Array(), "application/pdf", 0)!, /20 MB/);
+  const id = "00000000-0000-4000-8000-000000000001";
+  const data = { treeId: id, mediaId: id, title: "  Acta  ", description: "", documentType: "birth", historicalDate: "1901-02-28", personIds: [id] };
+  assert.equal(documentMetadataSchema.parse(data).title, "Acta");
+  assert.equal(documentMetadataSchema.safeParse({ ...data, historicalDate: "1901-02-29" }).success, false);
+  assert.equal(documentMetadataSchema.safeParse({ ...data, personIds: [id, id] }).success, false);
+  assert.equal(documentMetadataSchema.safeParse({ ...data, documentType: "executable" }).success, false);
 });

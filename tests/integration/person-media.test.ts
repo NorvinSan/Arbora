@@ -33,6 +33,9 @@ test("fotografías: permisos, múltiples asociaciones, perfiles, lectura privada
     if (!result.ok) return;
     photoId = result.id;
     assert.equal((await getPersonPhotos(treeId, first))[0].people.length, 2);
+    const duplicate = await uploadPhoto(editor, treeId, file, "Retrato", [first, second]);
+    assert.equal(duplicate.ok, true);
+    if (duplicate.ok) assert.equal(duplicate.id, photoId);
     assert.equal(await getAuthorizedPhoto(outsider, treeId, photoId), null);
     assert.equal(await getAuthorizedPhoto(viewer, otherTree, photoId), null);
     const stored = await getAuthorizedPhoto(viewer, treeId, photoId);
@@ -47,10 +50,20 @@ test("fotografías: permisos, múltiples asociaciones, perfiles, lectura privada
     assert.equal((await getPersonPhotos(treeId, first)).length, 0);
     assert.equal((await getPersonPhotos(treeId, second)).length, 1);
     assert.equal((await deletePhoto(viewer, treeId, photoId)).ok, false);
-    assert.equal((await deletePhoto(owner, treeId, photoId)).ok, true);
+    assert.equal((await removePhotoAssociation(owner, treeId, photoId, second)).ok, true);
     photoId = undefined;
     assert.equal((await getPersonPhotos(treeId, second)).length, 0);
     await assert.rejects(mediaStorage.get(stored.storage_key), { code: "ENOENT" });
+    const another = await uploadPhoto(owner, treeId, file, "Otra copia", [first]);
+    assert.equal(another.ok, true);
+    if (another.ok) {
+      photoId = another.id;
+      const storedAgain = await getAuthorizedPhoto(owner, treeId, another.id);
+      assert.ok(storedAgain);
+      assert.equal((await deletePhoto(owner, treeId, another.id)).ok, true);
+      photoId = undefined;
+      await assert.rejects(mediaStorage.get(storedAgain.storage_key), { code: "ENOENT" });
+    }
   } finally {
     if (photoId) await deletePhoto(owner, treeId, photoId);
     await pool.query("delete from family_tree where id in ($1, $2)", [treeId, otherTree]);

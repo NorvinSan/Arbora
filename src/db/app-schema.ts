@@ -5,6 +5,7 @@ import {
   index,
   bigint,
   boolean,
+  date,
   integer,
   pgEnum,
   pgTable,
@@ -220,11 +221,19 @@ export const media = pgTable("media", {
   fileSize: bigint("file_size", { mode: "number" }).notNull(),
   storageKey: text("storage_key").notNull().unique(),
   description: text("description"),
+  kind: text("kind").default("photo").notNull(),
+  title: text("title"),
+  documentType: text("document_type"),
+  historicalDate: date("historical_date"),
+  contentHash: text("content_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   unique("media_tree_id_id_unique").on(table.treeId, table.id),
   index("media_tree_created_idx").on(table.treeId, table.createdAt),
+  index("media_tree_hash_idx").on(table.treeId, table.contentHash),
   check("media_size_positive", sql`${table.fileSize} > 0`),
+  check("media_kind_valid", sql`${table.kind} in ('photo', 'document')`),
+  check("media_document_fields", sql`${table.kind} = 'photo' or (${table.title} is not null and ${table.documentType} in ('birth', 'marriage', 'death', 'letter', 'record', 'other'))`),
 ]);
 
 export const personMedia = pgTable("person_media", {

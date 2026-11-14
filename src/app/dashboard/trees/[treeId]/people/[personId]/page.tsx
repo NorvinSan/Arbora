@@ -12,7 +12,8 @@ import { getAccessiblePerson, getAccessibleTree, getFamilyRelations } from "@/li
 import { MAX_GENERATIONS } from "@/lib/tree-exploration-options";
 import Image from "next/image";
 import { PersonPhotos } from "@/components/person-photos";
-import { getPersonPhotos } from "@/lib/person-media";
+import { PersonDocuments } from "@/components/person-documents";
+import { getPersonDocuments, getPersonPhotos } from "@/lib/person-media";
 import { getAccessiblePeople } from "@/lib/trees";
 import { DefaultPortrait } from "@/components/default-portrait";
 
@@ -29,7 +30,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
   if (!tree) notFound();
   const member = await getAccessiblePerson(user.id, treeId, personId);
   if (!member) notFound();
-  const [{ parents, children, partners }, events, stories, photos, people] = await Promise.all([getFamilyRelations(treeId, personId), getPersonEvents(treeId, personId), getAccessibleStories(user.id, treeId, { personId }), getPersonPhotos(treeId, personId), getAccessiblePeople(user.id, treeId)]);
+  const [{ parents, children, partners }, events, stories, photos, documents, people] = await Promise.all([getFamilyRelations(treeId, personId), getPersonEvents(treeId, personId), getAccessibleStories(user.id, treeId, { personId }), getPersonPhotos(treeId, personId), getPersonDocuments(treeId, personId), getAccessiblePeople(user.id, treeId)]);
   if (!stories) notFound();
   const canEdit = tree.ownerId === user.id || tree.collaboratorRole === "editor";
   const profilePhoto = photos.find((photo) => photo.isProfile) ?? photos[0];
@@ -59,6 +60,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
         <Link className="text-link" href={treeUrl(personId, "descendants")}>Ver descendientes →</Link>
       </div>
       <PersonPhotos treeId={treeId} personId={personId} photos={photos} people={people} canEdit={canEdit} />
+      <PersonDocuments treeId={treeId} personId={personId} documents={documents} people={people} canEdit={canEdit} />
       <section aria-label="Historia de vida" className="space-y-6">
         <div><p className="eyebrow mb-2">Recuerdos y momentos</p><h2 className="section-title">Historia de vida</h2></div>
         {events.length === 0 ? <p className="soft-panel border-dashed p-6 text-sm text-[#718274]">Todavía no hay acontecimientos registrados para esta persona.</p> : (

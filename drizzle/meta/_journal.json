@@ -50,6 +50,13 @@
       "when": 1794613636207,
       "tag": "0006_melted_thunderbolt_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794649759614,
+      "tag": "0007_ambitious_starhawk",
+      "breakpoints": true
     }
   ]
 }
