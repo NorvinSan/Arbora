@@ -3,6 +3,8 @@ import {
   check,
   foreignKey,
   index,
+  bigint,
+  boolean,
   integer,
   pgEnum,
   pgTable,
@@ -209,6 +211,35 @@ export const storyPerson = pgTable(
   ],
 );
 
+export const media = pgTable("media", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  treeId: uuid("tree_id").notNull().references(() => familyTree.id, { onDelete: "cascade" }),
+  uploadedBy: text("uploaded_by").references(() => user.id, { onDelete: "set null" }),
+  fileName: text("file_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  fileSize: bigint("file_size", { mode: "number" }).notNull(),
+  storageKey: text("storage_key").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  unique("media_tree_id_id_unique").on(table.treeId, table.id),
+  index("media_tree_created_idx").on(table.treeId, table.createdAt),
+  check("media_size_positive", sql`${table.fileSize} > 0`),
+]);
+
+export const personMedia = pgTable("person_media", {
+  treeId: uuid("tree_id").notNull(),
+  mediaId: uuid("media_id").notNull(),
+  personId: uuid("person_id").notNull(),
+  isProfile: boolean("is_profile").default(false).notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.treeId, table.mediaId, table.personId] }),
+  foreignKey({ columns: [table.treeId, table.mediaId], foreignColumns: [media.treeId, media.id] }).onDelete("cascade"),
+  foreignKey({ columns: [table.treeId, table.personId], foreignColumns: [person.treeId, person.id] }).onDelete("cascade"),
+  index("person_media_person_idx").on(table.treeId, table.personId),
+  uniqueIndex("person_media_one_profile_idx").on(table.treeId, table.personId).where(sql`${table.isProfile} = true`),
+]);
+
 export const treeCollaborator = pgTable(
   "tree_collaborator",
   {
@@ -230,6 +261,7 @@ export const familyTreeRelations = relations(familyTree, ({ one, many }) => ({
   events: many(personEvent),
   stories: many(familyStory),
   collaborators: many(treeCollaborator),
+  media: many(media),
 }));
 
 export const personRelations = relations(person, ({ one, many }) => ({
@@ -240,6 +272,7 @@ export const personRelations = relations(person, ({ one, many }) => ({
   partnershipsAsB: many(partnership, { relationName: "partner_b" }),
   events: many(personEvent),
   storyPeople: many(storyPerson),
+  mediaLinks: many(personMedia),
 }));
 
 export const parentChildRelations = relations(parentChild, ({ one }) => ({
@@ -267,6 +300,16 @@ export const familyStoryRelations = relations(familyStory, ({ one, many }) => ({
 export const storyPersonRelations = relations(storyPerson, ({ one }) => ({
   story: one(familyStory, { fields: [storyPerson.storyId], references: [familyStory.id] }),
   person: one(person, { fields: [storyPerson.personId], references: [person.id] }),
+}));
+
+export const mediaRelations = relations(media, ({ one, many }) => ({
+  tree: one(familyTree, { fields: [media.treeId], references: [familyTree.id] }),
+  people: many(personMedia),
+}));
+
+export const personMediaRelations = relations(personMedia, ({ one }) => ({
+  media: one(media, { fields: [personMedia.mediaId], references: [media.id] }),
+  person: one(person, { fields: [personMedia.personId], references: [person.id] }),
 }));
 
 export const treeCollaboratorRelations = relations(treeCollaborator, ({ one }) => ({

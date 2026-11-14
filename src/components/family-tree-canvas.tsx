@@ -155,8 +155,8 @@ function Canvas({ treeId, data, initialPersonId, initialMode, initialGenerations
   })) ?? [];
   const shownEdges = graph?.edges.map((edge) => ({
     ...edge,
-    style: { ...edge.style, opacity: mode && branch && !branch.edges.some((link) => edge.id === `parent:${link.parentId}:${link.childId}`) ? 0.15 : 1 },
-    labelStyle: { ...edge.labelStyle, opacity: mode && branch && !branch.edges.some((link) => edge.id === `parent:${link.parentId}:${link.childId}`) ? 0.15 : 1 },
+    style: { ...edge.style, opacity: mode && branch && !(edge.id.startsWith("partner:") ? branch.personIds.includes(edge.source) && branch.personIds.includes(edge.target) : branch.edges.some((link) => edge.id === `parent:${link.parentId}:${link.childId}`)) ? 0.15 : 1 },
+    labelStyle: { ...edge.labelStyle, opacity: mode && branch && !(edge.id.startsWith("partner:") ? branch.personIds.includes(edge.source) && branch.personIds.includes(edge.target) : branch.edges.some((link) => edge.id === `parent:${link.parentId}:${link.childId}`)) ? 0.15 : 1 },
   })) ?? [];
   const selected = data.people.find((person) => person.id === selectedId);
 

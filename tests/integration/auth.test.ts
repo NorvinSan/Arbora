@@ -105,6 +105,34 @@ test("cuentas, sesiones y aislamiento de árboles con PostgreSQL real", { timeou
     const ownerProfile = await fetch(new URL(profilePath, baseURL), { headers: { Cookie: firstCookie } });
     assert.match(await ownerProfile.text(), /Agregar acontecimiento/);
 
+    const photoForm = new FormData();
+    photoForm.set("file", new File([Uint8Array.from([255, 216, 255, 0])], "familia.jpg", { type: "image/jpeg" }));
+    photoForm.set("description", "Retrato familiar");
+    photoForm.append("personId", personId);
+    const photoPath = `/api/trees/${treeId}/media`;
+    const invalidPhoto = new FormData();
+    invalidPhoto.set("file", new File(["<svg/ >"], "falsa.jpg", { type: "image/jpeg" }));
+    invalidPhoto.append("personId", personId);
+    invalidPhoto.set("description", "");
+    assert.equal((await fetch(new URL(photoPath, baseURL), { method: "POST", headers: { Cookie: firstCookie }, body: invalidPhoto })).status, 400);
+    const oversizedPhoto = new FormData();
+    oversizedPhoto.set("file", new File([new Uint8Array(10 * 1024 * 1024 + 1)], "grande.jpg", { type: "image/jpeg" }));
+    oversizedPhoto.append("personId", personId);
+    oversizedPhoto.set("description", "");
+    assert.equal((await fetch(new URL(photoPath, baseURL), { method: "POST", headers: { Cookie: firstCookie }, body: oversizedPhoto })).status, 413);
+    const viewerUpload = await fetch(new URL(photoPath, baseURL), { method: "POST", headers: { Cookie: secondCookie }, body: photoForm });
+    assert.equal(viewerUpload.status, 403);
+    const ownerUpload = await fetch(new URL(photoPath, baseURL), { method: "POST", headers: { Cookie: firstCookie }, body: photoForm });
+    assert.equal(ownerUpload.status, 201, await ownerUpload.clone().text());
+    const photoId = (await ownerUpload.json()).id as string;
+    const imagePath = `${photoPath}/${photoId}`;
+    assert.equal((await fetch(new URL(imagePath, baseURL), { headers: { Cookie: secondCookie } })).status, 200);
+    assert.equal((await fetch(new URL(imagePath, baseURL), { headers: { Cookie: randomUUID() } })).status, 401);
+    const photoProfile = await fetch(new URL(profilePath, baseURL), { headers: { Cookie: secondCookie } });
+    assert.match(await photoProfile.text(), /Retrato familiar/);
+    const { deletePhoto } = await import("../../src/lib/person-media");
+    assert.equal((await deletePhoto(sessionData.user.id, treeId, photoId)).ok, true);
+
     const story = await pool.query("INSERT INTO family_story (tree_id, author_id, title, body) VALUES ($1, $2, 'Relato de prueba', 'Una historia compartida') RETURNING id", [treeId, sessionData.user.id]);
     const storyId = story.rows[0].id as string;
     await pool.query("INSERT INTO story_person (tree_id, story_id, person_id) VALUES ($1, $2, $3)", [treeId, storyId, personId]);

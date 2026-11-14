@@ -10,6 +10,11 @@ import { getAccessibleStories } from "@/lib/family-stories";
 import { requireSession } from "@/lib/session";
 import { getAccessiblePerson, getAccessibleTree, getFamilyRelations } from "@/lib/trees";
 import { MAX_GENERATIONS } from "@/lib/tree-exploration-options";
+import Image from "next/image";
+import { PersonPhotos } from "@/components/person-photos";
+import { getPersonPhotos } from "@/lib/person-media";
+import { getAccessiblePeople } from "@/lib/trees";
+import { DefaultPortrait } from "@/components/default-portrait";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const labels = { biological: "Biológico", adoptive: "Adoptivo", other: "No especificado" };
@@ -24,9 +29,10 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
   if (!tree) notFound();
   const member = await getAccessiblePerson(user.id, treeId, personId);
   if (!member) notFound();
-  const [{ parents, children, partners }, events, stories] = await Promise.all([getFamilyRelations(treeId, personId), getPersonEvents(treeId, personId), getAccessibleStories(user.id, treeId, { personId })]);
+  const [{ parents, children, partners }, events, stories, photos, people] = await Promise.all([getFamilyRelations(treeId, personId), getPersonEvents(treeId, personId), getAccessibleStories(user.id, treeId, { personId }), getPersonPhotos(treeId, personId), getAccessiblePeople(user.id, treeId)]);
   if (!stories) notFound();
   const canEdit = tree.ownerId === user.id || tree.collaboratorRole === "editor";
+  const profilePhoto = photos.find((photo) => photo.isProfile) ?? photos[0];
   const context = await searchParams;
   const savedFocus = context.focus && uuid.test(context.focus) ? context.focus : personId;
   const generationCount = Number(context.generations);
@@ -39,7 +45,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
     <div className="space-y-8 lg:space-y-10">
       <Link href={treeUrl(savedFocus, mode)} className="text-link inline-flex items-center gap-2 text-sm"><ArrowLeft className="size-4" /> {tree.name}</Link>
       <header className="flex flex-wrap items-center gap-5 border-b border-[#dce7d9] pb-8 sm:gap-7">
-        <span aria-hidden="true" className="flex size-20 shrink-0 items-center justify-center rounded-2xl bg-[#e5f0e1] font-heading text-4xl text-[#356747] sm:size-24">{member.displayName.charAt(0).toLocaleUpperCase("es")}</span>
+        <span className="relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#e5f0e1] sm:size-24">{profilePhoto ? <Image src={`/api/trees/${treeId}/media/${profilePhoto.id}`} alt={`Fotografía de ${member.displayName}`} fill unoptimized className="object-cover" sizes="96px" /> : <DefaultPortrait />}</span>
         <div><p className="eyebrow mb-2 inline-flex items-center gap-2"><GitBranch className="size-4" /> Perfil familiar</p><h1 className="page-title">{member.displayName}</h1>
         <p className="mt-3 text-sm text-[#667a6a]">
           {member.lifeStatus === "living" ? "Vive" : member.lifeStatus === "deceased" ? "Fallecido/a" : "Estado vital desconocido"}
@@ -52,6 +58,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
         <Link className="text-link" href={treeUrl(personId, "ancestors")}>Ver ascendientes →</Link>
         <Link className="text-link" href={treeUrl(personId, "descendants")}>Ver descendientes →</Link>
       </div>
+      <PersonPhotos treeId={treeId} personId={personId} photos={photos} people={people} canEdit={canEdit} />
       <section aria-label="Historia de vida" className="space-y-6">
         <div><p className="eyebrow mb-2">Recuerdos y momentos</p><h2 className="section-title">Historia de vida</h2></div>
         {events.length === 0 ? <p className="soft-panel border-dashed p-6 text-sm text-[#718274]">Todavía no hay acontecimientos registrados para esta persona.</p> : (
