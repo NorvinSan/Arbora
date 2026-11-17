@@ -1,13 +1,15 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { parentChild, partnership, person, personEvent } from "@/db/app-schema";
+import { db } from "@/db";
+import { familyTree, parentChild, partnership, person, personEvent } from "@/db/app-schema";
 import type { GedcomImport } from "@/lib/gedcom-import";
-import { withWritableTree } from "@/lib/tree-write";
 
-export async function importTreeGedcom(userId: string, treeId: string, parsed: GedcomImport) {
+export async function importTreeGedcom(userId: string, name: string, parsed: GedcomImport) {
   if (parsed.errors.length || !parsed.people.length) return { ok: false as const, message: parsed.errors[0] ?? "No hay personas para importar." };
-  return withWritableTree(userId, treeId, async (tx) => {
+  return db.transaction(async (tx) => {
+    const treeId = randomUUID();
+    await tx.insert(familyTree).values({ id: treeId, ownerId: userId, name });
     const ids = new Map(parsed.people.map((member) => [member.id, randomUUID()]));
     for (let i = 0; i < parsed.people.length; i += 300) await tx.insert(person).values(parsed.people.slice(i, i + 300).map((member) => ({
       id: ids.get(member.id)!, treeId, displayName: member.displayName, givenName: member.givenName,
@@ -26,6 +28,6 @@ export async function importTreeGedcom(userId: string, treeId: string, parsed: G
       treeId, personId: ids.get(member.id)!, ...event,
     })));
     for (let i = 0; i < events.length; i += 300) await tx.insert(personEvent).values(events.slice(i, i + 300));
-    return { ok: true as const, counts: parsed.counts };
+    return { ok: true as const, treeId, counts: parsed.counts };
   });
 }

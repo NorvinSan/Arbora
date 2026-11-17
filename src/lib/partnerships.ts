@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { db } from "@/db";
 import type { z } from "zod";
 import type { createPartnershipSchema, deletePartnershipSchema } from "@/lib/tree-form-schemas";
 import { withWritableTree } from "@/lib/tree-write";
@@ -9,8 +10,9 @@ import type { ActionResult } from "@/lib/action-result";
 
 type Create = z.output<typeof createPartnershipSchema>;
 type Delete = z.output<typeof deletePartnershipSchema>;
+type TreeTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export async function createPartnership(userId: string, input: Create): Promise<ActionResult> {
+export async function insertPartnership(tx: TreeTx, input: Create): Promise<ActionResult> {
   const { treeId, kind } = input;
   if (input.personAId === input.personBId) return { ok: false, message: "Una persona no puede ser su propia pareja." };
   if (input.startDate && input.endDate && input.endDate < input.startDate) return { ok: false, message: "La fecha de fin no puede ser anterior a la de inicio." };
@@ -18,7 +20,6 @@ export async function createPartnership(userId: string, input: Create): Promise<
   const start = historicalDateParts(input.startDate, "exact");
   const end = historicalDateParts(input.endDate, "exact");
 
-  return withWritableTree(userId, treeId, async (tx) => {
     const people = await tx.execute(sql`select id from person where tree_id = ${treeId} and id in (${personAId}, ${personBId})`);
     if (people.rows.length !== 2) return { ok: false, message: "Ambas personas deben pertenecer al mismo árbol." };
 
@@ -36,7 +37,10 @@ export async function createPartnership(userId: string, input: Create): Promise<
     `);
     if (!inserted.rows.length) return { ok: false, message: "Esta relación de pareja ya está registrada." };
     return { ok: true };
-  });
+}
+
+export async function createPartnership(userId: string, input: Create): Promise<ActionResult> {
+  return withWritableTree(userId, input.treeId, (tx) => insertPartnership(tx, input));
 }
 
 export async function deletePartnership(userId: string, { treeId, partnershipId }: Delete): Promise<ActionResult<{ personAId: string; personBId: string }>> {

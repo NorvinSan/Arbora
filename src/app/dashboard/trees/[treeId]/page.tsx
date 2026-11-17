@@ -5,14 +5,13 @@ import { FamilyTreeCanvas } from "@/components/family-tree-canvas";
 import { PersonPortrait } from "@/components/person-portrait";
 import { TreeEditPanel } from "@/components/tree-edit-panel";
 import { TreeExport } from "@/components/tree-export";
-import { TreeImport } from "@/components/tree-import";
 import { requireSession } from "@/lib/session";
 import { getAccessibleTreeGraph } from "@/lib/tree-graph-data";
 import { getAccessibleStories } from "@/lib/family-stories";
 import { getAccessibleTree } from "@/lib/trees";
 import { MAX_GENERATIONS, type BranchMode } from "@/lib/tree-exploration-options";
 
-export default async function TreePage({ params, searchParams }: { params: Promise<{ treeId: string }>; searchParams: Promise<{ person?: string; mode?: string; generations?: string }> }) {
+export default async function TreePage({ params, searchParams }: { params: Promise<{ treeId: string }>; searchParams: Promise<{ person?: string; mode?: string; generations?: string; imported?: string; relations?: string; events?: string }> }) {
   const { user } = await requireSession();
   const { treeId } = await params;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(treeId)) notFound();
@@ -34,6 +33,7 @@ export default async function TreePage({ params, searchParams }: { params: Promi
   return (
     <div className="space-y-8 lg:space-y-10">
       <Link href="/dashboard" className="text-link inline-flex items-center gap-2 text-sm"><ArrowLeft className="size-4" /> Mis árboles</Link>
+      {selection.imported && /^\d{1,5}$/.test(selection.imported) && <p role="status" className="soft-panel p-4 text-sm text-[#356747]">Importación completa: {selection.imported} personas, {/^\d{1,5}$/.test(selection.relations ?? "") ? selection.relations : "0"} relaciones y {/^\d{1,5}$/.test(selection.events ?? "") ? selection.events : "0"} acontecimientos. Ya puedes explorar el árbol.</p>}
       <header className="flex flex-wrap items-end justify-between gap-5 border-b border-[#dce7d9] pb-7">
         <div className="space-y-3">
           <p className="eyebrow inline-flex items-center gap-2"><GitBranch className="size-4" /> Árbol familiar</p>
@@ -42,7 +42,7 @@ export default async function TreePage({ params, searchParams }: { params: Promi
         </div>
         <span className="inline-flex items-center gap-2 rounded-full border border-[#d4e4d0] bg-[#ebf3e8] px-4 py-2 text-sm font-medium text-[#356747]"><UsersRound className="size-4" /> {people.length} {people.length === 1 ? "persona" : "personas"}</span>
       </header>
-      {people.length > 0 && <FamilyTreeCanvas treeId={tree.id} data={graph} initialPersonId={initialPersonId} initialMode={initialMode} initialGenerations={initialGenerations} />}
+      {people.length > 0 && <FamilyTreeCanvas treeId={tree.id} data={graph} canEdit={tree.ownerId === user.id || tree.collaboratorRole === "editor"} initialPersonId={initialPersonId} initialMode={initialMode} initialGenerations={initialGenerations} />}
       <section aria-label="Familiares" className="space-y-5">
         <div><p className="eyebrow mb-2">Explora conexiones</p><h2 className="section-title">Familiares</h2></div>
         {people.length === 0 ? (
@@ -72,7 +72,6 @@ export default async function TreePage({ params, searchParams }: { params: Promi
         </details>
       ) : <p className="soft-panel p-5 text-sm leading-6 text-[#607266]">Tienes acceso de lectura a este árbol. Puedes explorar las personas y sus vínculos familiares.</p>}
       {(tree.ownerId === user.id || tree.collaboratorRole === "editor") && <TreeExport treeId={tree.id} personCount={people.length} />}
-      {(tree.ownerId === user.id || tree.collaboratorRole === "editor") && <TreeImport treeId={tree.id} />}
       <section aria-label="Historias familiares" className="space-y-5">
         <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="eyebrow mb-2 inline-flex items-center gap-2"><BookOpen className="size-4" /> Memoria compartida</p><h2 className="section-title">Historias familiares</h2></div><Link className="text-link text-sm" href={`/dashboard/trees/${tree.id}/stories`}>Ver todas las historias →</Link></div>
         {stories.length === 0 ? <p className="soft-panel border-dashed p-6 text-sm text-[#718274]">Aún no hay relatos en este árbol. <Link className="text-link" href={`/dashboard/trees/${tree.id}/stories`}>Explorar historias familiares</Link></p> :

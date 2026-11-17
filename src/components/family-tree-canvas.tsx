@@ -2,14 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Background, BaseEdge, Controls, Handle, Position, ReactFlow, ReactFlowProvider,
   getViewportForBounds, useReactFlow, type Edge, type EdgeProps, type NodeProps,
 } from "@xyflow/react";
 import { Button } from "@/components/ui/button";
 import { PersonPortrait } from "@/components/person-portrait";
-import { layoutFamilyGraph, type FamilyGraphData, type FamilyNode } from "@/lib/family-graph";
-import { getTreeBranchAction, searchTreePeopleAction } from "@/lib/tree-exploration-actions";
+import { TreeRelativeEditor, type RelativeKind } from "@/components/tree-relative-editor";
+import { layoutFamilyGraph, viewportKeepingNode, type FamilyGraphData, type FamilyNode } from "@/lib/family-graph";
+import { getTreeBranchAction, getTreeGraphAction, searchTreePeopleAction } from "@/lib/tree-exploration-actions";
 import { MAX_GENERATIONS, type BranchMode } from "@/lib/tree-exploration-options";
 
 function PersonCard({ data }: NodeProps<FamilyNode>) {
@@ -43,13 +45,16 @@ const edgeTypes = { partnerArc: PartnerArc };
 type SearchResult = Awaited<ReturnType<typeof searchTreePeopleAction>>[number];
 type Branch = NonNullable<Awaited<ReturnType<typeof getTreeBranchAction>>>;
 
-function Canvas({ treeId, data, initialPersonId, initialMode, initialGenerations }: {
-  treeId: string; data: FamilyGraphData; initialPersonId?: string; initialMode?: BranchMode; initialGenerations?: number;
+function Canvas({ treeId, data, canEdit, initialPersonId, initialMode, initialGenerations }: {
+  treeId: string; data: FamilyGraphData; canEdit: boolean; initialPersonId?: string; initialMode?: BranchMode; initialGenerations?: number;
 }) {
   const router = useRouter();
-  const { setViewport, setCenter } = useReactFlow<FamilyNode, Edge>();
+  const { getViewport, setViewport, setCenter } = useReactFlow<FamilyNode, Edge>();
   const canvasRef = useRef<HTMLDivElement>(null);
+  const previousGraph = useRef<Awaited<ReturnType<typeof layoutFamilyGraph>> | null>(null);
+  const initialFocusDone = useRef(false);
   const [flowReady, setFlowReady] = useState(false);
+  const [currentData, setCurrentData] = useState(data);
   const [graph, setGraph] = useState<Awaited<ReturnType<typeof layoutFamilyGraph>> | null>(null);
   const [error, setError] = useState(false);
   const [query, setQuery] = useState("");
@@ -57,24 +62,44 @@ function Canvas({ treeId, data, initialPersonId, initialMode, initialGenerations
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(initialPersonId && data.people.some((p) => p.id === initialPersonId) ? initialPersonId : null);
+  const selectedRef = useRef(selectedId);
   const [mode, setMode] = useState<BranchMode | null>(initialMode ?? null);
   const [generations, setGenerations] = useState(initialGenerations ?? 4);
   const [branch, setBranch] = useState<Branch | null>(null);
   const [branchLoading, setBranchLoading] = useState(!!initialMode && !!initialPersonId);
   const [branchError, setBranchError] = useState(false);
   const [branchRequest, setBranchRequest] = useState(0);
+  const [editing, setEditing] = useState<RelativeKind | null>(null);
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => { selectedRef.current = selectedId; }, [selectedId]);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setCurrentData(data));
+    return () => cancelAnimationFrame(frame);
+  }, [data]);
 
   useEffect(() => {
     let active = true;
+    let frame = 0;
     // React retains this component after a refresh; discard stale nodes if the
     // new layout fails rather than leaving the previous tree visible.
-    layoutFamilyGraph(data).then((result) => {
-      if (active) { setGraph(result); setError(false); }
+    layoutFamilyGraph(currentData).then((result) => {
+      if (active) {
+        const previous = previousGraph.current;
+        const previousAnchor = previous?.nodes.find((node) => node.id === selectedRef.current);
+        const nextAnchor = result.nodes.find((node) => node.id === selectedRef.current);
+        const viewport = previousAnchor && nextAnchor ? getViewport() : null;
+        previousGraph.current = result;
+        setGraph(result); setError(false);
+        if (viewport && previousAnchor && nextAnchor) frame = requestAnimationFrame(() => {
+          void setViewport(viewportKeepingNode(viewport, previousAnchor.position, nextAnchor.position));
+        });
+      }
     }).catch(() => {
       if (active) { setGraph(null); setError(true); }
     });
-    return () => { active = false; };
-  }, [data]);
+    return () => { active = false; cancelAnimationFrame(frame); };
+  }, [currentData, getViewport, setViewport]);
 
   useEffect(() => {
     if (!query.trim()) return;
@@ -117,7 +142,8 @@ function Canvas({ treeId, data, initialPersonId, initialMode, initialGenerations
   }, [graph, setViewport]);
 
   useEffect(() => {
-    if (!graph || !flowReady) return;
+    if (!graph || !flowReady || initialFocusDone.current) return;
+    initialFocusDone.current = true;
     const frame = requestAnimationFrame(() => {
       const node = graph.nodes.find((person) => person.id === selectedId);
       if (node) void setCenter(node.position.x + 80, node.position.y + 36, { zoom: 1, duration: 350 });
@@ -138,6 +164,8 @@ function Canvas({ treeId, data, initialPersonId, initialMode, initialGenerations
 
   const selectPerson = (id: string) => {
     setSelectedId(id);
+    setEditing(null);
+    setNotice("");
     setMode(null);
     setBranch(null);
     setBranchError(false);
@@ -162,14 +190,24 @@ function Canvas({ treeId, data, initialPersonId, initialMode, initialGenerations
     style: { ...edge.style, opacity: mode && branch && !(edge.id.startsWith("partner:") ? branch.personIds.includes(edge.source) && branch.personIds.includes(edge.target) : branch.edges.some((link) => edge.id === `parent:${link.parentId}:${link.childId}`)) ? 0.15 : 1 },
     labelStyle: { ...edge.labelStyle, opacity: mode && branch && !(edge.id.startsWith("partner:") ? branch.personIds.includes(edge.source) && branch.personIds.includes(edge.target) : branch.edges.some((link) => edge.id === `parent:${link.parentId}:${link.childId}`)) ? 0.15 : 1 },
   })) ?? [];
-  const selected = data.people.find((person) => person.id === selectedId);
+  const selected = currentData.people.find((person) => person.id === selectedId);
+
+  async function onRelativeSaved(id: string) {
+    const updated = await getTreeGraphAction(treeId);
+    if (!updated) throw new Error("No se pudo consultar el árbol actualizado.");
+    setCurrentData(updated);
+    setEditing(null);
+    setNotice(`Vínculo guardado con ${updated.people.find((member) => member.id === id)?.displayName ?? "la persona seleccionada"}.`);
+    setBranchRequest((value) => value + 1);
+    router.refresh();
+  }
 
   return (
     <section aria-label="Árbol genealógico interactivo" className="overflow-hidden rounded-2xl border border-[#dbe5d9] bg-white">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8eee6] px-4 py-3">
         <div>
           <h2 className="font-heading text-xl text-[#193d2b]">Árbol interactivo</h2>
-          <p className="text-xs text-[#718274]">Pulsa una persona para abrir su ficha.</p>
+           <p className="text-xs text-[#718274]">Pulsa una persona para seleccionarla y ver sus acciones.</p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={() => centerAndFit()} disabled={!graph || !flowReady}>
           Centrar y ajustar
@@ -190,6 +228,11 @@ function Canvas({ treeId, data, initialPersonId, initialMode, initialGenerations
         </ul>}
         {selected && <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-medium text-[#284c34]">{selected.displayName}</span>
+          <Link className="text-link rounded-lg border px-3 py-1.5 text-xs" href={`/dashboard/trees/${treeId}/people/${selected.id}?focus=${selected.id}&generations=${generations}`}>Ver perfil</Link>
+          <Button type="button" size="sm" variant="outline" onClick={() => {
+            const node = graph?.nodes.find((item) => item.id === selected.id);
+            if (node) void setCenter(node.position.x + 80, node.position.y + 36, { zoom: getViewport().zoom, duration: 350 });
+          }}>Centrar en persona</Button>
           <Button type="button" size="sm" variant={mode === "ancestors" ? "default" : "outline"} onClick={() => chooseMode("ancestors")}>Ver ascendientes</Button>
           <Button type="button" size="sm" variant={mode === "descendants" ? "default" : "outline"} onClick={() => chooseMode("descendants")}>Ver descendientes</Button>
           <label htmlFor="generations">Generaciones</label>
@@ -199,24 +242,28 @@ function Canvas({ treeId, data, initialPersonId, initialMode, initialGenerations
           <Button type="button" size="sm" variant="outline" onClick={() => { setMode(null); setBranch(null); setBranchError(false); centerAndFit(); }}>Vista completa</Button>
           <button type="button" className="text-link text-xs" onClick={() => { setSelectedId(null); setMode(null); setBranch(null); }}>Quitar selección</button>
         </div>}
+        {selected && canEdit && <div className="flex flex-wrap gap-2" aria-label={`Acciones para ${selected.displayName}`}>
+          {(["parent", "child", "partner"] as const).map((kind) => <Button key={kind} type="button" size="sm" variant="outline" onClick={() => { setEditing(kind); setNotice(""); }}>{ { parent: "Agregar padre/madre", child: "Agregar hijo/a", partner: "Agregar pareja" }[kind]}</Button>)}
+        </div>}
+        {notice && <p role="status" className="form-success text-sm">{notice}</p>}
         {mode && selected && <p role="status" className="text-sm text-[#607266]">{branchLoading ? "Explorando rama…" : branchError ? "No se pudo explorar la rama." : branch?.personIds.length === 1 ? `No hay ${mode === "ancestors" ? "ascendientes" : "descendientes"} registrados.` : `Mostrando ${mode === "ancestors" ? "ascendientes" : "descendientes"} de ${selected.displayName}.`}</p>}
       </div>
       {error && <p role="alert" className="p-4 text-sm text-red-700">No se pudo organizar el árbol. Actualiza la página para intentarlo de nuevo.</p>}
       {!graph && !error && <p role="status" className="p-4 text-sm text-[#607266]">Organizando el árbol…</p>}
-      <div ref={canvasRef} className="h-[480px] w-full sm:h-[600px]">
+      <div ref={canvasRef} className="relative h-[480px] w-full sm:h-[600px]">
         <ReactFlow<FamilyNode, Edge>
           onInit={() => setFlowReady(true)}
           nodes={shownNodes}
           edges={shownEdges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          onNodeClick={(_, node) => router.push(`/dashboard/trees/${treeId}/people/${node.id}?focus=${selectedId ?? node.id}&${mode ? `mode=${mode}&` : ""}generations=${generations}`)}
+           onNodeClick={(_, node) => selectPerson(node.id)}
           onKeyDown={(event) => {
             const id = (event.target as HTMLElement).closest<HTMLElement>(".react-flow__node[data-id]")?.dataset.id;
             if (!id) return;
             if (event.key === "Enter" || event.key === " ") {
               event.preventDefault();
-              router.push(`/dashboard/trees/${treeId}/people/${id}?focus=${selectedId ?? id}&${mode ? `mode=${mode}&` : ""}generations=${generations}`);
+               selectPerson(id);
             }
           }}
           nodesDraggable={false}
@@ -231,6 +278,7 @@ function Canvas({ treeId, data, initialPersonId, initialMode, initialGenerations
           <Background color="#e3ece0" gap={22} size={1} />
           <Controls showInteractive={false} />
         </ReactFlow>
+        {selected && editing && canEdit && <TreeRelativeEditor key={`${selected.id}:${editing}`} treeId={treeId} anchor={selected} relationship={editing} people={currentData.people} onClose={() => setEditing(null)} onSaved={onRelativeSaved} />}
       </div>
       <div className="flex flex-wrap gap-5 border-t border-[#e8eee6] px-4 py-3 text-xs text-[#607266]">
         <span><span className="mr-2 inline-block w-7 border-t-2 border-[#719977] align-middle" />Progenitor–hijo/a</span>
@@ -242,6 +290,6 @@ function Canvas({ treeId, data, initialPersonId, initialMode, initialGenerations
   );
 }
 
-export function FamilyTreeCanvas(props: { treeId: string; data: FamilyGraphData; initialPersonId?: string; initialMode?: BranchMode; initialGenerations?: number }) {
+export function FamilyTreeCanvas(props: { treeId: string; data: FamilyGraphData; canEdit: boolean; initialPersonId?: string; initialMode?: BranchMode; initialGenerations?: number }) {
   return <ReactFlowProvider><Canvas {...props} /></ReactFlowProvider>;
 }

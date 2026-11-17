@@ -42,8 +42,9 @@ function parseDate(raw: string, warnings: string[], context: string): DateParts 
 function eventDate(node: Node, warnings: string[], context: string) { return parseDate(value(node, "DATE"), warnings, context); }
 function dateOrder(first: DateParts, last: DateParts) {
   return first.year !== null && last.year !== null &&
-    (first.year > last.year || (first.year === last.year && first.month !== null && last.month !== null &&
-      (first.month > last.month || (first.month === last.month && first.day !== null && last.day !== null && first.day > last.day))));
+    (first.year > last.year || (first.year === last.year &&
+      ((first.month ?? 1) > (last.month ?? 12) ||
+        ((first.month ?? 1) === (last.month ?? 12) && (first.day ?? 1) > (last.day ?? 31)))));
 }
 
 export function parseGedcom(content: string): GedcomImport {
@@ -79,6 +80,7 @@ export function parseGedcom(content: string): GedcomImport {
   const peopleIds = new Set(individuals.map((r) => r.id));
   const familyIds = new Set(families.map((r) => r.id));
   for (const record of [...individuals, ...families]) if (!record.id) errors.push(`Registro ${record.tag} sin identificador.`);
+  if (individuals.some((record) => !record.id) || families.some((record) => !record.id)) return result;
   const eventTitles: Record<string, string> = {
     BIRT: "Nacimiento", DEAT: "Fallecimiento", MARR: "Matrimonio", RESI: "Residencia", EDUC: "Educación", OCCU: "Trabajo",
     BAPM: "Bautismo", CHR: "Bautizo", BURI: "Sepultura", CREM: "Cremación", CENS: "Censo",
@@ -122,6 +124,7 @@ export function parseGedcom(content: string): GedcomImport {
   }
   const links = new Set<string>(), couples = new Set<string>();
   for (const family of families) {
+    if (children(family, "HUSB").length > 1 || children(family, "WIFE").length > 1) errors.push(`${family.id}: múltiples personas en un mismo puesto de pareja.`);
     const adults = [value(family, "HUSB"), value(family, "WIFE")].filter(Boolean);
     if (new Set(adults).size !== adults.length) errors.push(`${family.id}: pareja formada por la misma persona.`);
     for (const id of adults) if (!peopleIds.has(id)) errors.push(`${family.id}: persona inexistente ${id}.`);
@@ -142,14 +145,14 @@ export function parseGedcom(content: string): GedcomImport {
     const startEvent = child(family, "MARR") ?? children(family, "EVEN").find((node) => /^(Unión|Relación de pareja)$/i.test(value(node, "TYPE") || node.value));
     const endEvent = children(family, "EVEN").find((node) => /^Fin de relación/i.test(value(node, "TYPE") || node.value));
     if (child(family, "DIV")) warnings.push(`${family.id}: divorcio no importado como motivo de fin de relación.`);
-    if (startEvent && adults.length === 2 && adults[0] !== adults[1]) {
-      const kind = startEvent.tag === "MARR" ? "marriage" : /^Unión$/i.test(value(startEvent, "TYPE") || startEvent.value) ? "union" : "partnership";
-      const start = eventDate(startEvent, warnings, `${family.id} pareja`), end = endEvent ? eventDate(endEvent, warnings, `${family.id} fin`) : emptyDate();
+    if (adults.length === 2 && adults[0] !== adults[1]) {
+      const kind = !startEvent ? "partnership" : startEvent.tag === "MARR" ? "marriage" : /^Unión$/i.test(value(startEvent, "TYPE") || startEvent.value) ? "union" : "partnership";
+      const start = startEvent ? eventDate(startEvent, warnings, `${family.id} pareja`) : emptyDate(), end = endEvent ? eventDate(endEvent, warnings, `${family.id} fin`) : emptyDate();
       if (dateOrder(start, end)) errors.push(`${family.id}: fin de pareja anterior al inicio.`);
       const [personAId, personBId] = adults.sort();
       const key = `${personAId}:${personBId}:${kind}:${start.year}:${start.month}:${start.day}`;
       if (couples.has(key)) warnings.push(`${family.id}: pareja duplicada omitida.`);
-      else { couples.add(key); result.partners.push({ personAId, personBId, kind, start, end, notes: [text(child(startEvent, "NOTE")), text(child(family, "NOTE"))].filter(Boolean).join("\n\n") || null }); }
+      else { couples.add(key); result.partners.push({ personAId, personBId, kind, start, end, notes: [text(startEvent && child(startEvent, "NOTE")), text(child(family, "NOTE"))].filter(Boolean).join("\n\n") || null }); }
     } else if (startEvent) warnings.push(`${family.id}: pareja incompleta; no se importa la relación de pareja.`);
   }
   const descendants = new Map<string, string[]>();

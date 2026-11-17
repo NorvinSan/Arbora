@@ -6,7 +6,7 @@ import { Pool } from "pg";
 
 config({ path: ".env.local", quiet: true });
 
-test("GEDCOM import persists relationships atomically, isolates trees and denies viewers", { timeout: 60_000 }, async () => {
+test("GEDCOM import creates an isolated tree atomically for the importing user", { timeout: 60_000 }, async () => {
   const url = process.env.DATABASE_URL;
   assert.ok(url, "Configura .env.local para las pruebas de integración.");
   assert.ok(["localhost", "127.0.0.1"].includes(new URL(url).hostname), "Solo se usa PostgreSQL local.");
@@ -15,6 +15,7 @@ test("GEDCOM import persists relationships atomically, isolates trees and denies
   const pool = new Pool({ connectionString: url });
   const [owner, editor, viewer, outsider] = Array.from({ length: 4 }, () => randomUUID());
   const [treeId, otherTreeId] = [randomUUID(), randomUUID()];
+  const importedTrees: string[] = [];
   const input = `0 HEAD
 1 GEDC
 2 VERS 7.0
@@ -42,26 +43,36 @@ test("GEDCOM import persists relationships atomically, isolates trees and denies
     await pool.query("insert into tree_collaborator (tree_id, user_id, role) values ($1, $2, 'editor'), ($1, $3, 'viewer')", [treeId, editor, viewer]);
     const parsed = parseGedcom(input);
     assert.deepEqual(parsed.errors, []);
-    assert.equal((await importTreeGedcom(viewer, treeId, parsed)).ok, false);
-    assert.equal((await importTreeGedcom(outsider, treeId, parsed)).ok, false);
-    assert.equal((await importTreeGedcom(editor, otherTreeId, parsed)).ok, false);
+    // Every import is a new tree owned by its importer, never a write to a viewed tree.
     assert.equal((await pool.query("select count(*)::int as n from person where tree_id = $1", [treeId])).rows[0].n, 0);
-    assert.equal((await importTreeGedcom(editor, treeId, parsed)).ok, true);
-    const rows = await pool.query("select id, display_name from person where tree_id = $1", [treeId]);
+    const imported = await importTreeGedcom(editor, "Árbol importado", parsed);
+    assert.equal(imported.ok, true);
+    if (!imported.ok) throw new Error("Importación inesperadamente rechazada.");
+    importedTrees.push(imported.treeId);
+    assert.equal((await pool.query("select owner_id from family_tree where id = $1", [imported.treeId])).rows[0].owner_id, editor);
+    const rows = await pool.query("select id, display_name from person where tree_id = $1", [imported.treeId]);
     assert.equal(rows.rows.length, 3);
     assert.ok(rows.rows.every((row) => !["@I1@", "@I2@", "@I3@"].includes(row.id)));
-    const links = await pool.query("select parent_id, child_id, relation_type from parent_child where tree_id = $1", [treeId]);
+    const links = await pool.query("select parent_id, child_id, relation_type from parent_child where tree_id = $1", [imported.treeId]);
     assert.equal(links.rows.length, 2);
     assert.ok(links.rows.every((row) => row.relation_type === "adoptive" && rows.rows.some((person) => person.id === row.parent_id) && rows.rows.some((person) => person.id === row.child_id)));
-    assert.equal((await pool.query("select kind, start_year from partnership where tree_id = $1", [treeId])).rows[0].start_year, 1920);
-    assert.equal((await pool.query("select year from person_event where tree_id = $1", [treeId])).rows[0].year, 1900);
+    assert.equal((await pool.query("select kind, start_year from partnership where tree_id = $1", [imported.treeId])).rows[0].start_year, 1920);
+    assert.equal((await pool.query("select year from person_event where tree_id = $1", [imported.treeId])).rows[0].year, 1900);
+    assert.equal((await pool.query("select count(*)::int as n from person where tree_id = $1", [treeId])).rows[0].n, 0);
     assert.equal((await pool.query("select count(*)::int as n from person where tree_id = $1", [otherTreeId])).rows[0].n, 0);
     const broken = parseGedcom(input);
     broken.people[0].events.push({ ...broken.people[0].events[0] }); // Violates the unique birth index after inserting people.
-    await assert.rejects(importTreeGedcom(owner, treeId, broken));
-    assert.equal((await pool.query("select count(*)::int as n from person where tree_id = $1", [treeId])).rows[0].n, 3);
+    await assert.rejects(importTreeGedcom(owner, "Fallido", broken));
+    assert.equal((await pool.query("select count(*)::int as n from family_tree where owner_id = $1 and name = 'Fallido'", [owner])).rows[0].n, 0);
+    assert.equal((await pool.query("select count(*)::int as n from person where tree_id = $1", [imported.treeId])).rows[0].n, 3);
+    const personal = await importTreeGedcom(viewer, "Árbol propio", parsed);
+    assert.equal(personal.ok, true);
+    if (!personal.ok) throw new Error("Importación inesperadamente rechazada.");
+    importedTrees.push(personal.treeId);
+    assert.equal((await pool.query("select owner_id from family_tree where id = $1", [personal.treeId])).rows[0].owner_id, viewer);
+    assert.equal((await pool.query("select count(*)::int as n from person where tree_id = $1", [treeId])).rows[0].n, 0);
   } finally {
-    await pool.query("delete from family_tree where id in ($1, $2)", [treeId, otherTreeId]);
+    await pool.query("delete from family_tree where id = any($1::uuid[])", [[treeId, otherTreeId, ...importedTrees]]);
     await pool.query('delete from "user" where id = any($1::text[])', [[owner, editor, viewer, outsider]]);
     await pool.end();
   }

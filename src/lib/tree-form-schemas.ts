@@ -48,3 +48,31 @@ export const deletePartnershipSchema = z.object({
   treeId: z.string().uuid("El árbol no es válido."),
   partnershipId: z.string().uuid("La relación no es válida."),
 });
+
+export const addRelativeSchema = z.object({
+  treeId: addPersonSchema.shape.treeId,
+  anchorId: z.uuid("Selecciona una persona del árbol."),
+  relationship: z.enum(["parent", "child", "partner"]),
+  personMode: z.enum(["new", "existing"]),
+  existingId: z.string(),
+  person: z.object({
+    displayName: z.string().trim().max(120),
+    givenName: addPersonSchema.shape.givenName,
+    familyName: addPersonSchema.shape.familyName,
+    lifeStatus: addPersonSchema.shape.lifeStatus,
+    whereaboutsStatus: addPersonSchema.shape.whereaboutsStatus,
+  }),
+  relationType: createParentChildSchema.shape.relationType,
+  kind: createPartnershipSchema.shape.kind,
+  startDate: createPartnershipSchema.shape.startDate,
+  endDate: createPartnershipSchema.shape.endDate,
+}).superRefine((input, ctx) => {
+  if (input.personMode === "new" && !input.person.displayName) ctx.addIssue({ code: "custom", path: ["person", "displayName"], message: "Introduce un nombre para la persona." });
+  if (input.personMode === "existing") {
+    if (!z.uuid().safeParse(input.existingId).success) ctx.addIssue({ code: "custom", path: ["existingId"], message: "Selecciona una persona válida." });
+    else if (input.existingId === input.anchorId) ctx.addIssue({ code: "custom", path: ["existingId"], message: "Elige a otra persona." });
+  }
+  if (input.relationship === "partner" && input.startDate && input.endDate && input.endDate < input.startDate) {
+    ctx.addIssue({ code: "custom", path: ["endDate"], message: "La fecha de fin no puede ser anterior a la de inicio." });
+  }
+});

@@ -71,6 +71,10 @@ test("rejects malformed structure, invalid dates and contradictory chronology", 
   assert.throws(() => parse("0 @I1@ INDI\n1 BIRT\n2 DATE 30 FEB 1900\n"), /fecha inválida/);
   const result = parse("0 @I1@ INDI\n1 NAME A\n1 BIRT\n2 DATE 2000\n1 DEAT\n2 DATE 1999\n");
   assert.match(result.errors.join(" "), /fallecimiento anterior/);
+  assert.match(parse("0 @I1@ INDI\n1 NAME A\n0 @F1@ FAM\n1 HUSB @I1@\n1 HUSB @I1@\n").errors.join(" "), /múltiples personas/);
+  assert.match(parse("0 INDI\n1 NAME A\n").errors.join(" "), /sin identificador/);
+  const partial = parse("0 @I1@ INDI\n1 NAME A\n1 BIRT\n2 DATE DEC 2000\n1 DEAT\n2 DATE 2000\n");
+  assert.deepEqual(partial.errors, []);
 });
 
 test("unsupported GEDCOM information is reported and unsupported dates are not invented", () => {
@@ -79,6 +83,14 @@ test("unsupported GEDCOM information is reported and unsupported dates are not i
   assert.equal(result.people[0].events[0].year, null);
   assert.equal(result.people[0].events[1].title, "Bautismo");
   assert.match(result.warnings.join(" "), /OBJE.*SEX.*fecha no compatible/);
+});
+
+test("families with two adults but no marriage retain a partnership without inventing a wedding", () => {
+  const result = parse("0 @I1@ INDI\n1 NAME A\n0 @I2@ INDI\n1 NAME B\n0 @F1@ FAM\n1 HUSB @I1@\n1 WIFE @I2@\n");
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.partners.length, 1);
+  assert.equal(result.partners[0].kind, "partnership");
+  assert.equal(result.partners[0].start.year, null);
 });
 
 test("validates file extension, size and UTF-8 encoding", async () => {

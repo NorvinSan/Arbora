@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, GitBranch, Leaf, Plus, TreePine } from "lucide-react";
 import { CreateTreeForm } from "@/components/create-tree-form";
+import { TreeImport } from "@/components/tree-import";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireSession } from "@/lib/session";
 import { getAccessibleTrees } from "@/lib/trees";
@@ -50,7 +51,7 @@ export default async function DashboardPage() {
             </div>
           )}
         </section>
-        <div className="space-y-3 lg:pt-8"><div className="flex items-center gap-2 text-sm font-medium text-[#56735b]"><Plus className="size-4" /> Empieza algo nuevo</div><CreateTreeForm /></div>
+        <div className="space-y-5 lg:pt-8"><div className="flex items-center gap-2 text-sm font-medium text-[#56735b]"><Plus className="size-4" /> Empieza algo nuevo</div><CreateTreeForm /><TreeImport /></div>
       </div>
     </div>
   );

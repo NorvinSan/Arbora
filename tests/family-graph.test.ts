@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildFamilyGraph, layoutFamilyGraph, type FamilyGraphData } from "../src/lib/family-graph";
+import { buildFamilyGraph, layoutFamilyGraph, viewportKeepingNode, type FamilyGraphData } from "../src/lib/family-graph";
 
 const person = (id: string) => ({ id, displayName: id, lifeStatus: "unknown" as const, whereaboutsStatus: "unknown" as const });
 
@@ -75,4 +75,27 @@ test("múltiples parejas y medios hermanos conservan generaciones, conexiones y 
     const a = nodes[i].position, b = nodes[j].position;
     assert.ok(a.x + 160 <= b.x || b.x + 160 <= a.x || a.y + 72 <= b.y || b.y + 72 <= a.y, `${nodes[i].id} y ${nodes[j].id} se superponen`);
   }
+});
+
+test("el diagrama sigue sin solapamientos tras añadir padre, hijo y pareja con nombres largos", async () => {
+  const updated: FamilyGraphData = {
+    people: [...family.people, { ...person("newParent"), displayName: "Nombre compuesto extremadamente largo de una persona" }, person("newChild"), person("newPartner")],
+    parents: [...family.parents, { parentId: "newParent", childId: "mother" }, { parentId: "daughter", childId: "newChild" }],
+    partners: [...family.partners, { personAId: "daughter", personBId: "newPartner" }],
+  };
+  const { nodes, edges } = await layoutFamilyGraph(updated);
+  assert.equal(edges.length, family.parents.length + family.partners.length + 3);
+  for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+    const a = nodes[i].position, b = nodes[j].position;
+    assert.ok(a.x + 160 <= b.x || b.x + 160 <= a.x || a.y + 72 <= b.y || b.y + 72 <= a.y, `${nodes[i].id} y ${nodes[j].id} se superponen`);
+  }
+});
+
+test("una reorganización conserva zoom y posición visual de la persona seleccionada", () => {
+  const before = { x: 120, y: 80 }, after = { x: 340, y: 190 };
+  const viewport = { x: -10, y: 22, zoom: 0.75 };
+  const result = viewportKeepingNode(viewport, before, after);
+  assert.equal(result.zoom, viewport.zoom);
+  assert.equal(after.x * result.zoom + result.x, before.x * viewport.zoom + viewport.x);
+  assert.equal(after.y * result.zoom + result.y, before.y * viewport.zoom + viewport.y);
 });

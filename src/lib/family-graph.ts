@@ -14,6 +14,11 @@ const NODE_HEIGHT = 72;
 const PARTNER_GAP = 36;
 const elk = new ELK();
 
+// Keep the selected card at the same screen coordinates when ELK rearranges the graph.
+export function viewportKeepingNode(viewport: { x: number; y: number; zoom: number }, before: { x: number; y: number }, after: { x: number; y: number }) {
+  return { x: viewport.x + (before.x - after.x) * viewport.zoom, y: viewport.y + (before.y - after.y) * viewport.zoom, zoom: viewport.zoom };
+}
+
 function pairKey(a: string, b: string) {
   return [a, b].sort().join(":");
 }
@@ -60,7 +65,7 @@ export function buildFamilyGraph(data: FamilyGraphData) {
     data: { name: person.displayName, lifeStatus: person.lifeStatus, whereaboutsStatus: person.whereaboutsStatus, profileMediaId: person.profileMediaId },
     draggable: false,
     selectable: true,
-    ariaLabel: `Abrir ficha de ${person.displayName}`,
+    ariaLabel: `Seleccionar a ${person.displayName}`,
   }));
   const edges: Edge[] = [];
   const parentPairs = new Set<string>();

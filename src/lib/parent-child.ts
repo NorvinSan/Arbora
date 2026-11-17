@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { db } from "@/db";
 import type { z } from "zod";
 import type { createParentChildSchema, deleteParentChildSchema } from "@/lib/tree-form-schemas";
 import { withWritableTree } from "@/lib/tree-write";
@@ -8,11 +9,10 @@ import type { ActionResult } from "@/lib/action-result";
 
 type Relation = z.output<typeof deleteParentChildSchema>;
 type CreateRelation = z.output<typeof createParentChildSchema>;
+type TreeTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export async function createParentChild(userId: string, { treeId, parentId, childId, relationType }: CreateRelation): Promise<ActionResult> {
+export async function insertParentChild(tx: TreeTx, { treeId, parentId, childId, relationType }: CreateRelation): Promise<ActionResult> {
   if (parentId === childId) return { ok: false, message: "Una persona no puede ser su propio progenitor." };
-
-  return withWritableTree(userId, treeId, async (tx) => {
     const people = await tx.execute(sql`
       select id from person where tree_id = ${treeId} and id in (${parentId}, ${childId})
     `);
@@ -41,7 +41,10 @@ export async function createParentChild(userId: string, { treeId, parentId, chil
       values (${treeId}, ${parentId}, ${childId}, ${relationType}::parent_relation_type)
     `);
     return { ok: true };
-  });
+}
+
+export async function createParentChild(userId: string, input: CreateRelation): Promise<ActionResult> {
+  return withWritableTree(userId, input.treeId, (tx) => insertParentChild(tx, input));
 }
 
 export async function deleteParentChild(userId: string, { treeId, parentId, childId }: Relation): Promise<ActionResult> {
