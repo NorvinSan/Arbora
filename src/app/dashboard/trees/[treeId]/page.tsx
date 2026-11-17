@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { FamilyTreeCanvas } from "@/components/family-tree-canvas";
 import { TreeEditPanel } from "@/components/tree-edit-panel";
 import { TreeExport } from "@/components/tree-export";
+import { TreeImport } from "@/components/tree-import";
 import { requireSession } from "@/lib/session";
 import { getAccessibleTreeGraph } from "@/lib/tree-graph-data";
 import { getAccessibleStories } from "@/lib/family-stories";
@@ -70,6 +71,7 @@ export default async function TreePage({ params, searchParams }: { params: Promi
         </details>
       ) : <p className="soft-panel p-5 text-sm leading-6 text-[#607266]">Tienes acceso de lectura a este árbol. Puedes explorar las personas y sus vínculos familiares.</p>}
       {(tree.ownerId === user.id || tree.collaboratorRole === "editor") && <TreeExport treeId={tree.id} personCount={people.length} />}
+      {(tree.ownerId === user.id || tree.collaboratorRole === "editor") && <TreeImport treeId={tree.id} />}
       <section aria-label="Historias familiares" className="space-y-5">
         <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="eyebrow mb-2 inline-flex items-center gap-2"><BookOpen className="size-4" /> Memoria compartida</p><h2 className="section-title">Historias familiares</h2></div><Link className="text-link text-sm" href={`/dashboard/trees/${tree.id}/stories`}>Ver todas las historias →</Link></div>
         {stories.length === 0 ? <p className="soft-panel border-dashed p-6 text-sm text-[#718274]">Aún no hay relatos en este árbol. <Link className="text-link" href={`/dashboard/trees/${tree.id}/stories`}>Explorar historias familiares</Link></p> :
