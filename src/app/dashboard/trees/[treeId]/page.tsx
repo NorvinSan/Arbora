@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, BookOpen, ChevronDown, GitBranch, UsersRound } from "lucide-react";
 import { notFound } from "next/navigation";
 import { FamilyTreeCanvas } from "@/components/family-tree-canvas";
+import { PersonPortrait } from "@/components/person-portrait";
 import { TreeEditPanel } from "@/components/tree-edit-panel";
 import { TreeExport } from "@/components/tree-export";
 import { TreeImport } from "@/components/tree-import";
@@ -50,7 +51,7 @@ export default async function TreePage({ params, searchParams }: { params: Promi
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {people.map((member) => (
               <li key={member.id} className="soft-panel group flex items-center gap-3 p-4 transition-all hover:border-[#bad1ba] hover:shadow-md">
-                <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#e9f2e7] font-heading text-lg text-[#356747]">{member.displayName.charAt(0).toLocaleUpperCase("es")}</span>
+                <PersonPortrait treeId={tree.id} mediaId={member.profileMediaId} name={member.displayName} className="size-11 rounded-full" sizes="44px" />
                 <div className="min-w-0 flex-1"><Link href={`/dashboard/trees/${tree.id}/people/${member.id}`} className="text-link block truncate text-sm font-semibold">{member.displayName}</Link>
                 <p className="mt-1 text-xs text-[#718274]">
                   {member.whereaboutsStatus === "missing" ? "Paradero desconocido · " : ""}

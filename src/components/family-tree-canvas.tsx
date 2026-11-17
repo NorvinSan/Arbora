@@ -7,19 +7,23 @@ import {
   getViewportForBounds, useReactFlow, type Edge, type EdgeProps, type NodeProps,
 } from "@xyflow/react";
 import { Button } from "@/components/ui/button";
+import { PersonPortrait } from "@/components/person-portrait";
 import { layoutFamilyGraph, type FamilyGraphData, type FamilyNode } from "@/lib/family-graph";
 import { getTreeBranchAction, searchTreePeopleAction } from "@/lib/tree-exploration-actions";
 import { MAX_GENERATIONS, type BranchMode } from "@/lib/tree-exploration-options";
 
 function PersonCard({ data }: NodeProps<FamilyNode>) {
   return (
-    <div className={`flex h-[72px] w-40 cursor-pointer flex-col justify-center rounded-xl border bg-white px-3 text-center shadow-sm transition-colors hover:border-[#6f9b73] focus-within:border-[#6f9b73] ${data.highlighted ? "border-[#356747] ring-4 ring-[#a4d2a4]" : "border-[#cbdcc9]"}`}>
+    <div className={`flex h-[72px] w-40 cursor-pointer items-center gap-2 rounded-xl border bg-white px-2 shadow-sm transition-colors hover:border-[#6f9b73] focus-within:border-[#6f9b73] ${data.highlighted ? "border-[#356747] ring-4 ring-[#a4d2a4]" : "border-[#cbdcc9]"}`}>
       <Handle id="parent" type="target" position={Position.Top} className="!border-[#719977] !bg-[#719977]" />
       <Handle id="partner-left" type="target" position={Position.Left} className="!border-[#ad7b77] !bg-[#ad7b77]" />
-      <p className="truncate text-sm font-semibold text-[#284c34]" title={data.name}>{data.name}</p>
-      <p className="mt-0.5 text-[11px] text-[#748875]">
-        {data.whereaboutsStatus === "missing" ? "Paradero desconocido" : data.lifeStatus === "deceased" ? "Fallecido/a" : data.lifeStatus === "living" ? "Vive" : "Estado desconocido"}
-      </p>
+      {data.treeId && <PersonPortrait treeId={data.treeId} mediaId={data.profileMediaId} name={data.name} className="size-11 rounded-full" sizes="44px" />}
+      <div className="min-w-0 flex-1 text-left">
+        <p className="line-clamp-2 text-xs font-semibold leading-tight text-[#284c34]" title={data.name}>{data.name}</p>
+        <p className="mt-0.5 truncate text-[10px] text-[#748875]">
+          {data.whereaboutsStatus === "missing" ? "Paradero desconocido" : data.lifeStatus === "deceased" ? "Fallecido/a" : data.lifeStatus === "living" ? "Vive" : "Estado desconocido"}
+        </p>
+      </div>
       <Handle id="partner-right" type="source" position={Position.Right} className="!border-[#ad7b77] !bg-[#ad7b77]" />
       <Handle id="child" type="source" position={Position.Bottom} className="!border-[#719977] !bg-[#719977]" />
     </div>
@@ -150,7 +154,7 @@ function Canvas({ treeId, data, initialPersonId, initialMode, initialGenerations
   };
   const shownNodes = graph?.nodes.map((node) => ({
     ...node,
-    data: { ...node.data, highlighted: node.id === selectedId },
+    data: { ...node.data, treeId, highlighted: node.id === selectedId },
     style: { ...node.style, opacity: mode && branch && !branch.personIds.includes(node.id) ? 0.22 : 1 },
   })) ?? [];
   const shownEdges = graph?.edges.map((edge) => ({

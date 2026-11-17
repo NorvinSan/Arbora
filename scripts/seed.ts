@@ -1,15 +1,18 @@
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { config } from "dotenv";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import {
   familyStory,
   familyTree,
+  media,
   parentChild,
   partnership,
   person,
   personEvent,
+  personMedia,
   storyPerson,
 } from "../src/db/app-schema";
 import { user } from "../src/db/schema";
@@ -89,6 +92,9 @@ async function main() {
     const keys = ["elena", "marcos", "lucia", "daniel", "sofia", "gabriel", "tomas"] as const;
     type PersonKey = (typeof keys)[number];
     const peopleIds = Object.fromEntries(keys.map((key) => [key, id(`person:${key}`)])) as Record<PersonKey, string>;
+    const { mediaStorage } = await import("../src/lib/media-storage");
+    const portraits = await Promise.all(keys.map(async (key) => ({ key, bytes: await readFile(new URL(`./demo-portraits/${key}.jpg`, import.meta.url)) })));
+    const createdStorageKeys: string[] = [];
 
     const people: (typeof person.$inferInsert)[] = [
       { id: peopleIds.elena, treeId, displayName: "Elena Rivera", givenName: "Elena", familyName: "Rivera", lifeStatus: "deceased", whereaboutsStatus: "known", biography: [
@@ -180,49 +186,72 @@ async function main() {
       event("tomas-photos", "tomas", "other", { year: 2023, qualifier: "approximate", description: "Ayudó a revisar el árbol familiar y a identificar los vínculos adoptivos como parte de la historia compartida, no como una nota al margen." }, "Revisión del árbol familiar"),
     ];
 
-    await db.transaction(async (tx) => {
-      await tx.insert(familyTree).values({
-        id: treeId,
-        ownerId: owner.id,
-        name: "Árbol de demostración",
-        description: "Familia ficticia de tres generaciones para desarrollo.",
-      }).onConflictDoNothing();
+    try {
+      await db.transaction(async (tx) => {
+        await tx.insert(familyTree).values({
+          id: treeId,
+          ownerId: owner.id,
+          name: "Árbol de demostración",
+          description: "Familia ficticia de tres generaciones para desarrollo.",
+        }).onConflictDoNothing();
 
-      // Only replace untouched biographies from the original demo seed. Other
-      // fields and biographies written by users stay intact on subsequent runs.
-      for (const member of people) {
-        await tx.insert(person).values(member).onConflictDoUpdate({
-          target: person.id,
-          set: { biography: member.biography },
-          setWhere: sql`${person.treeId} = ${treeId} and (
-            ${person.biography} is null or ${person.biography} in (
-              'Guardaba las cartas y relatos de la familia.',
-              'La familia no tiene noticias recientes sobre su paradero.'
-            )
-          )`,
-        });
-      }
-      await tx.insert(parentChild).values(links.map(([parent, child, relationType]) => ({
-        treeId, parentId: peopleIds[parent], childId: peopleIds[child], relationType,
-      }))).onConflictDoNothing();
+        // Only replace untouched biographies from the original demo seed. Other
+        // fields and biographies written by users stay intact on subsequent runs.
+        for (const member of people) {
+          await tx.insert(person).values(member).onConflictDoUpdate({
+            target: person.id,
+            set: { biography: member.biography },
+            setWhere: sql`${person.treeId} = ${treeId} and (
+              ${person.biography} is null or ${person.biography} in (
+                'Guardaba las cartas y relatos de la familia.',
+                'La familia no tiene noticias recientes sobre su paradero.'
+              )
+            )`,
+          });
+        }
+        await tx.insert(parentChild).values(links.map(([parent, child, relationType]) => ({
+          treeId, parentId: peopleIds[parent], childId: peopleIds[child], relationType,
+        }))).onConflictDoNothing();
 
-      const pair = (a: PersonKey, b: PersonKey) => [peopleIds[a], peopleIds[b]].sort() as [string, string];
-      const [olderA, olderB] = pair("elena", "marcos");
-      const [youngerA, youngerB] = pair("lucia", "daniel");
-      await tx.insert(partnership).values([
-        { id: id("partnership:elena-marcos"), treeId, personAId: olderA, personBId: olderB, kind: "marriage", startYear: 1959, startQualifier: "exact" },
-        { id: id("partnership:lucia-daniel"), treeId, personAId: youngerA, personBId: youngerB, kind: "partnership", startYear: 1987, startQualifier: "approximate" },
-      ]).onConflictDoNothing();
+        const pair = (a: PersonKey, b: PersonKey) => [peopleIds[a], peopleIds[b]].sort() as [string, string];
+        const [olderA, olderB] = pair("elena", "marcos");
+        const [youngerA, youngerB] = pair("lucia", "daniel");
+        await tx.insert(partnership).values([
+          { id: id("partnership:elena-marcos"), treeId, personAId: olderA, personBId: olderB, kind: "marriage", startYear: 1959, startQualifier: "exact" },
+          { id: id("partnership:lucia-daniel"), treeId, personAId: youngerA, personBId: youngerB, kind: "partnership", startYear: 1987, startQualifier: "approximate" },
+        ]).onConflictDoNothing();
 
-      await tx.insert(personEvent).values(events).onConflictDoNothing();
-      await tx.insert(familyStory).values([
-        { id: id("story:family"), treeId, authorId: owner.id, title: "Recuerdos de familia", body: "Elena conservó cartas y fotografías que hoy ayudan a reconstruir la historia familiar." },
-        { id: id("story:gabriel"), treeId, authorId: owner.id, title: "Últimas noticias de Gabriel", body: "El paradero de Gabriel sigue sin confirmarse. La familia conserva las fechas como aproximadas." },
-      ]).onConflictDoNothing();
-      await tx.insert(storyPerson).values({ treeId, storyId: id("story:gabriel"), personId: peopleIds.gabriel }).onConflictDoNothing();
-    });
+        await tx.insert(personEvent).values(events).onConflictDoNothing();
+        await tx.insert(familyStory).values([
+          { id: id("story:family"), treeId, authorId: owner.id, title: "Recuerdos de familia", body: "Elena conservó cartas y fotografías que hoy ayudan a reconstruir la historia familiar." },
+          { id: id("story:gabriel"), treeId, authorId: owner.id, title: "Últimas noticias de Gabriel", body: "El paradero de Gabriel sigue sin confirmarse. La familia conserva las fechas como aproximadas." },
+        ]).onConflictDoNothing();
+        await tx.insert(storyPerson).values({ treeId, storyId: id("story:gabriel"), personId: peopleIds.gabriel }).onConflictDoNothing();
 
-    console.log(`Seed listo: 1 árbol ficticio, ${people.length} personas, ${links.length} vínculos padre-hijo, 2 parejas, ${events.length} eventos y 2 historias.`);
+        // Only add a sample portrait when this person has no photos at all. A
+        // subsequent seed run must never replace a user's chosen profile image.
+        for (const { key, bytes } of portraits) {
+          const [existingPhoto] = await tx.select({ id: personMedia.mediaId }).from(personMedia)
+            .innerJoin(media, and(eq(media.id, personMedia.mediaId), eq(media.treeId, personMedia.treeId)))
+            .where(and(eq(personMedia.treeId, treeId), eq(personMedia.personId, peopleIds[key]), eq(media.kind, "photo"))).limit(1);
+          if (existingPhoto) continue;
+          const storageKey = await mediaStorage.put(treeId, bytes);
+          createdStorageKeys.push(storageKey);
+          const mediaId = id(`portrait:${key}`);
+          await tx.insert(media).values({ id: mediaId, treeId, uploadedBy: owner.id,
+            fileName: `${key}.jpg`, mimeType: "image/jpeg", fileSize: bytes.length,
+            storageKey, contentHash: createHash("sha256").update(bytes).digest("hex"), kind: "photo",
+            description: "Retrato ilustrativo del árbol de demostración",
+          });
+          await tx.insert(personMedia).values({ treeId, personId: peopleIds[key], mediaId, isProfile: true });
+        }
+      });
+    } catch (error) {
+      await Promise.all(createdStorageKeys.map((key) => mediaStorage.remove(key)));
+      throw error;
+    }
+
+    console.log(`Seed listo: 1 árbol ficticio, ${people.length} personas con retratos de ejemplo, ${links.length} vínculos padre-hijo, 2 parejas, ${events.length} eventos y 2 historias.`);
     if (useDemoAccount) {
       console.log(`Cuenta demo: ${demo.email}`);
       console.log(demoPasswordWorks ? `Contraseña demo: ${demo.password}` : "La contraseña demo se cambió; inicia sesión con la contraseña actual.");

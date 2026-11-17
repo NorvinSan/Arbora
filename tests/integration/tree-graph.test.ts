@@ -16,6 +16,7 @@ test("grafo real: tres generaciones, parejas, lector y aislamiento entre árbole
   const [owner, viewer, outsider] = Array.from({ length: 3 }, () => randomUUID());
   const [treeId, otherTreeId] = [randomUUID(), randomUUID()];
   const [grandparent, parent, partner, child, otherPerson] = Array.from({ length: 5 }, () => randomUUID());
+  const [firstPhoto, chosenPhoto, otherPhoto] = Array.from({ length: 3 }, () => randomUUID());
 
   try {
     for (const id of [owner, viewer, outsider]) {
@@ -27,6 +28,10 @@ test("grafo real: tres generaciones, parejas, lector y aislamiento entre árbole
       await pool.query("insert into person (id, tree_id, display_name) values ($1, $2, $3)", [id, treeId, id]);
     }
     await pool.query("insert into person (id, tree_id, display_name) values ($1, $2, 'Persona ajena')", [otherPerson, otherTreeId]);
+    for (const [id, photoTree] of [[firstPhoto, treeId], [chosenPhoto, treeId], [otherPhoto, otherTreeId]]) {
+      await pool.query("insert into media (id, tree_id, file_name, mime_type, file_size, storage_key) values ($1, $2, 'foto.jpg', 'image/jpeg', 12, $3)", [id, photoTree, `${photoTree}/${id}`]);
+    }
+    await pool.query("insert into person_media (tree_id, media_id, person_id, is_profile) values ($1, $2, $3, false), ($1, $4, $3, true), ($5, $6, $7, true)", [treeId, firstPhoto, parent, chosenPhoto, otherTreeId, otherPhoto, otherPerson]);
     for (const [from, to] of [[grandparent, parent], [parent, child], [partner, child]]) {
       await pool.query("insert into parent_child (tree_id, parent_id, child_id, relation_type) values ($1, $2, $3, 'biological')", [treeId, from, to]);
     }
@@ -38,6 +43,8 @@ test("grafo real: tres generaciones, parejas, lector y aislamiento entre árbole
     assert.deepEqual(viewerGraph, ownerGraph);
     assert.ok(viewerGraph);
     assert.equal(viewerGraph.people.length, 4);
+    assert.equal(viewerGraph.people.find((member) => member.id === parent)?.profileMediaId, chosenPhoto);
+    assert.equal(viewerGraph.people.find((member) => member.id === child)?.profileMediaId, null);
     assert.equal(viewerGraph.parents.length, 3);
     assert.equal(viewerGraph.partners.length, 2);
     const rendered = await layoutFamilyGraph(viewerGraph);
@@ -48,6 +55,7 @@ test("grafo real: tres generaciones, parejas, lector y aislamiento entre árbole
     assert.equal(await getAccessibleTreeGraph(viewer, otherTreeId), null);
     const otherGraph = await getAccessibleTreeGraph(owner, otherTreeId);
     assert.deepEqual(otherGraph?.people.map((member) => member.id), [otherPerson]);
+    assert.equal(otherGraph?.people[0].profileMediaId, otherPhoto);
     assert.deepEqual(otherGraph?.parents, []);
     assert.deepEqual(otherGraph?.partners, []);
   } finally {

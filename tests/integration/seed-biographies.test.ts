@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
+import { unlink } from "node:fs/promises";
+import { join } from "node:path";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { config } from "dotenv";
@@ -15,6 +17,7 @@ test("la seed completa biografías y acontecimientos sin sobrescribir ediciones"
   const userId = randomUUID();
   const email = `seed-biographies-${userId}@example.invalid`;
   const seed = () => execFileSync("pnpm", ["db:seed", "--owner-email", email], { cwd: process.cwd(), timeout: 30_000 });
+  let storageKeys: string[] = [];
 
   try {
     await pool.query('insert into "user" (id, name, email) values ($1, $2, $3)', [userId, "Prueba", email]);
@@ -23,6 +26,11 @@ test("la seed completa biografías y acontecimientos sin sobrescribir ediciones"
       "select p.id, p.display_name, p.biography from person p join family_tree t on t.id = p.tree_id where t.owner_id = $1", [userId],
     );
     assert.equal(first.rows.length, 7);
+    const photos = await pool.query<{ storage_key: string; person_id: string; media_id: string }>(
+      "select m.storage_key, pm.person_id, pm.media_id from media m join person_media pm on pm.media_id = m.id and pm.tree_id = m.tree_id join family_tree t on t.id = m.tree_id where t.owner_id = $1 and pm.is_profile = true", [userId],
+    );
+    storageKeys = photos.rows.map((photo) => photo.storage_key);
+    assert.equal(photos.rows.length, 7);
     for (const member of first.rows) {
       assert.ok(member.biography && member.biography.length > 250 && member.biography.includes("\n\n"), member.display_name);
     }
@@ -40,6 +48,10 @@ test("la seed completa biografías y acontecimientos sin sobrescribir ediciones"
     await pool.query("update person set biography = 'Mi propia biografía' where id = $1", [sofia.id]);
     await pool.query("update person_event set description = 'Mi recuerdo personal' where id = $1", [sofiaEvent.id]);
     seed();
+    const photosAfter = await pool.query<{ person_id: string; media_id: string }>(
+      "select pm.person_id, pm.media_id from person_media pm join family_tree t on t.id = pm.tree_id where t.owner_id = $1 and pm.is_profile = true", [userId],
+    );
+    assert.deepEqual(photosAfter.rows.sort((a, b) => a.person_id.localeCompare(b.person_id)), photos.rows.map(({ person_id, media_id }) => ({ person_id, media_id })).sort((a, b) => a.person_id.localeCompare(b.person_id)));
     const updated = await pool.query<{ id: string; biography: string | null }>("select id, biography from person where id = any($1::uuid[])", [[elena.id, sofia.id]]);
     assert.equal(updated.rows.find((member) => member.id === elena.id)?.biography, elena.biography);
     assert.equal(updated.rows.find((member) => member.id === sofia.id)?.biography, "Mi propia biografía");
@@ -50,6 +62,7 @@ test("la seed completa biografías y acontecimientos sin sobrescribir ediciones"
     assert.equal(retained.rows[0].count, 36);
   } finally {
     await pool.query("delete from family_tree where owner_id = $1", [userId]);
+    for (const key of storageKeys) await unlink(join(process.env.MEDIA_STORAGE_DIR ?? join(process.cwd(), ".data", "media"), key));
     await pool.query('delete from "user" where id = $1', [userId]);
     await pool.end();
   }

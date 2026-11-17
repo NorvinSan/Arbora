@@ -2,12 +2,12 @@ import type { Edge, Node } from "@xyflow/react";
 import ELK from "elkjs/lib/elk.bundled.js";
 
 export type FamilyGraphData = {
-  people: { id: string; displayName: string; lifeStatus: "living" | "deceased" | "unknown"; whereaboutsStatus: "known" | "missing" | "unknown" }[];
+  people: { id: string; displayName: string; lifeStatus: "living" | "deceased" | "unknown"; whereaboutsStatus: "known" | "missing" | "unknown"; profileMediaId?: string | null }[];
   parents: { parentId: string; childId: string; relationType?: "biological" | "adoptive" | "other" }[];
   partners: { personAId: string; personBId: string }[];
 };
 
-export type FamilyNode = Node<{ name: string; highlighted?: boolean; lifeStatus: FamilyGraphData["people"][number]["lifeStatus"]; whereaboutsStatus: FamilyGraphData["people"][number]["whereaboutsStatus"] }, "person">;
+export type FamilyNode = Node<{ name: string; profileMediaId?: string | null; treeId?: string; highlighted?: boolean; lifeStatus: FamilyGraphData["people"][number]["lifeStatus"]; whereaboutsStatus: FamilyGraphData["people"][number]["whereaboutsStatus"] }, "person">;
 
 const NODE_WIDTH = 160;
 const NODE_HEIGHT = 72;
@@ -57,7 +57,7 @@ export function buildFamilyGraph(data: FamilyGraphData) {
     id: person.id,
     type: "person",
     position: { x: 0, y: 0 },
-    data: { name: person.displayName, lifeStatus: person.lifeStatus, whereaboutsStatus: person.whereaboutsStatus },
+    data: { name: person.displayName, lifeStatus: person.lifeStatus, whereaboutsStatus: person.whereaboutsStatus, profileMediaId: person.profileMediaId },
     draggable: false,
     selectable: true,
     ariaLabel: `Abrir ficha de ${person.displayName}`,
