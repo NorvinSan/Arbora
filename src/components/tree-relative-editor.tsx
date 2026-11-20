@@ -35,7 +35,7 @@ export function TreeRelativeEditor({ treeId, anchor, relationship, people, onClo
     } catch { setError("No se pudo actualizar el árbol. Comprueba los cambios e inténtalo de nuevo."); }
   });
 
-  return <aside role="dialog" aria-label={titles[relationship]} aria-modal="false" className="absolute inset-y-0 right-0 z-20 w-full overflow-y-auto border-l border-[#dce7d9] bg-white p-4 shadow-2xl sm:max-w-sm sm:p-5">
+  return <aside role="dialog" aria-label={titles[relationship]} aria-modal="false" className="absolute inset-y-0 right-0 z-20 w-full overflow-x-hidden overflow-y-auto border-l border-[#dce7d9] bg-white p-4 shadow-2xl sm:max-w-sm sm:p-5">
     <div className="mb-4 flex items-start justify-between gap-3">
       <div><h3 className="font-heading text-lg font-semibold text-[#193d2b]">{titles[relationship]}</h3><p className="mt-1 text-sm text-[#607266]">{relationship === "parent" ? "Progenitor/a de" : relationship === "child" ? "Hijo/a de" : "Pareja de"} <strong>{anchor.displayName}</strong></p></div>
       <button type="button" className="text-link text-sm" disabled={isSubmitting} onClick={onClose}>Cerrar</button>
@@ -55,7 +55,7 @@ export function TreeRelativeEditor({ treeId, anchor, relationship, people, onClo
         <div className="space-y-1"><Label htmlFor="relative-end">Fin (opcional)</Label><input id="relative-end" type="date" className="field-select" disabled={isSubmitting} {...register("endDate")} />{errors.endDate && <p role="alert" className="text-sm text-red-700">{errors.endDate.message}</p>}</div>
       </> : <div className="space-y-1"><Label htmlFor="relative-type">Tipo de parentesco</Label><select id="relative-type" className="field-select" disabled={isSubmitting} {...register("relationType")}><option value="other">No especificado</option><option value="biological">Biológico</option><option value="adoptive">Adoptivo</option></select></div>}
       {error && <p role="alert" className="form-error">{error}</p>}
-      <div className="flex gap-2"><Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Guardando…" : "Guardar vínculo"}</Button><Button type="button" variant="outline" disabled={isSubmitting} onClick={onClose}>Cancelar</Button></div>
+      <div className="flex flex-wrap gap-2"><Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Guardando…" : "Guardar vínculo"}</Button><Button type="button" variant="outline" disabled={isSubmitting} onClick={onClose}>Cancelar</Button></div>
     </form>
   </aside>;
 }

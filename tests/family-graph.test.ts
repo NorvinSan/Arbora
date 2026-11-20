@@ -45,7 +45,8 @@ test("una pareja con varios períodos solo dibuja una línea, sin perder sus ví
 });
 
 test("árbol sin personas no genera conexiones", async () => {
-  assert.deepEqual(await layoutFamilyGraph({ people: [], parents: [], partners: [] }), { nodes: [], edges: [] });
+  const result = await layoutFamilyGraph({ people: [], parents: [], partners: [] });
+  assert.deepEqual({ nodes: result.nodes, edges: result.edges }, { nodes: [], edges: [] });
 });
 
 test("múltiples parejas y medios hermanos conservan generaciones, conexiones y nodos separados", async () => {
@@ -98,4 +99,21 @@ test("una reorganización conserva zoom y posición visual de la persona selecci
   assert.equal(result.zoom, viewport.zoom);
   assert.equal(after.x * result.zoom + result.x, before.x * viewport.zoom + viewport.x);
   assert.equal(after.y * result.zoom + result.y, before.y * viewport.zoom + viewport.y);
+});
+
+test("ediciones de datos personales conservan coordenadas; cambiar vínculos recalcula el layout", async () => {
+  const before = await layoutFamilyGraph(family);
+  const renamed = await layoutFamilyGraph({ ...family, people: family.people.map((member) => ({ ...member, displayName: `Otro ${member.displayName}`, lifeStatus: "living" })) }, before);
+  assert.deepEqual(renamed.nodes.map((node) => node.position), before.nodes.map((node) => node.position));
+  assert.equal(renamed.nodes[0].data.name, "Otro grandmother");
+  assert.equal(renamed.topologyKey, before.topologyKey);
+  const reorderedNames = await layoutFamilyGraph({ ...family, people: family.people.map((member) => ({ ...member, displayName: member.id === "mother" ? "Zeta" : "Alfa" })) }, before);
+  for (const edge of reorderedNames.edges.filter((link) => link.id.startsWith("partner:"))) {
+    const source = reorderedNames.nodes.find((node) => node.id === edge.source)!;
+    const target = reorderedNames.nodes.find((node) => node.id === edge.target)!;
+    assert.ok(source.position.x < target.position.x, "una edición de nombre no invierte la conexión de pareja");
+  }
+  const changed = await layoutFamilyGraph({ ...family, parents: family.parents.slice(1) }, renamed);
+  assert.notEqual(changed.topologyKey, before.topologyKey);
+  assert.equal(changed.edges.length, before.edges.length - 1);
 });

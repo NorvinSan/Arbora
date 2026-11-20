@@ -131,6 +131,16 @@
 }
 
 @layer components {
+  @media (pointer: coarse) {
+    .family-tree-scroll .react-flow__pane,
+    .family-tree-scroll .react-flow__node {
+      touch-action: pan-y;
+    }
+    .family-tree-canvas .react-flow__controls-button {
+      width: 40px;
+      height: 40px;
+    }
+  }
   .page-shell {
     @apply mx-auto w-full max-w-7xl px-5 sm:px-8 lg:px-12;
   }

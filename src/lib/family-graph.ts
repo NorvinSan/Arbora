@@ -7,7 +7,7 @@ export type FamilyGraphData = {
   partners: { personAId: string; personBId: string }[];
 };
 
-export type FamilyNode = Node<{ name: string; profileMediaId?: string | null; treeId?: string; highlighted?: boolean; lifeStatus: FamilyGraphData["people"][number]["lifeStatus"]; whereaboutsStatus: FamilyGraphData["people"][number]["whereaboutsStatus"] }, "person">;
+export type FamilyNode = Node<{ name: string; profileMediaId?: string | null; treeId?: string; highlighted?: boolean; connected?: boolean; lifeStatus: FamilyGraphData["people"][number]["lifeStatus"]; whereaboutsStatus: FamilyGraphData["people"][number]["whereaboutsStatus"] }, "person">;
 
 const NODE_WIDTH = 160;
 const NODE_HEIGHT = 72;
@@ -47,7 +47,8 @@ export function buildFamilyGraph(data: FamilyGraphData) {
     groups.set(groupId, [...(groups.get(groupId) ?? []), person.id]);
   }
   for (const members of groups.values()) {
-    members.sort((a, b) => people.get(a)!.displayName.localeCompare(people.get(b)!.displayName, "es") || a.localeCompare(b));
+    // Card order must not change when a name is edited while coordinates are reused.
+    members.sort((a, b) => a.localeCompare(b));
     if (members.length > 2) {
       const degree = (id: string) => [...partnerPairs.values()].filter(([a, b]) => a === id || b === id).length;
       const hub = members.reduce((best, id) => degree(id) > degree(best) ? id : best, members[0]);
@@ -90,9 +91,23 @@ export function buildFamilyGraph(data: FamilyGraphData) {
   return { nodes, edges, groups, groupEdges };
 }
 
-export async function layoutFamilyGraph(data: FamilyGraphData) {
+// Presentation-only edits reuse coordinates; relationship changes still run ELK.
+export function familyTopologyKey(data: FamilyGraphData) {
+  return JSON.stringify([
+    data.people.map((person) => person.id).sort(),
+    data.parents.map(({ parentId, childId }) => `${parentId}:${childId}`).sort(),
+    data.partners.map(({ personAId, personBId }) => pairKey(personAId, personBId)).sort(),
+  ]);
+}
+
+export async function layoutFamilyGraph(data: FamilyGraphData, previous?: { nodes: FamilyNode[]; edges: Edge[]; topologyKey?: string } | null) {
   const graph = buildFamilyGraph(data);
-  if (!graph.nodes.length) return { nodes: graph.nodes, edges: graph.edges };
+  const topologyKey = familyTopologyKey(data);
+  if (previous?.topologyKey === topologyKey) {
+    const positions = new Map(previous.nodes.map((node) => [node.id, node.position]));
+    return { nodes: graph.nodes.map((node) => ({ ...node, position: positions.get(node.id) ?? node.position })), edges: graph.edges, topologyKey };
+  }
+  if (!graph.nodes.length) return { nodes: graph.nodes, edges: graph.edges, topologyKey };
   const layout = await elk.layout({
     id: "family",
     layoutOptions: {
@@ -119,5 +134,6 @@ export async function layoutFamilyGraph(data: FamilyGraphData) {
   return {
     nodes: graph.nodes.map((node) => ({ ...node, position: positions.get(node.id) ?? node.position })),
     edges: graph.edges,
+    topologyKey,
   };
 }
